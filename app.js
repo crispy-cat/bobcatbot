@@ -1,4 +1,4 @@
-/* BobCatBot Alpha 0.5.2
+/* BobCatBot Alpha 0.5.3
  * Created by crispycat
  * Bobcat project started 2019/10/27
 */
@@ -24,8 +24,8 @@ BotData.GlobalData = {
 	Version: {
 		Major: 0,
 		Minor: 5,
-		Patch: 2,
-		String: "0.5.2"
+		Patch: 3,
+		String: "0.5.3"
 	},
 	// Global access levels, only levels < 0 and >= 3 override server levels
 	AccessLevels: {
@@ -80,15 +80,12 @@ BotData.GlobalData = {
 	Levels: {
 		ExpPerChat: 3,
 		ExpNeeded: [
-			0, 12, 24, 48, 96, 192, 384, 768, 1536, 3072, 6144,
-			12288, 24576, 49152, 98304, 196608, 393216, 786432,
-			1572864, 3145728, 6291456, 12582912, 25165824,
-			50331648, 100663296, 201326592, 402653184,
-			805306368, 1610612736, 3221225472, 6442450944,
-			12884901888, 25769803776, 51539607552,
-			103079215104, 206158430208, 412316860416,
-			824633720832, 1649267441664, 3298534883328,
-			6597069766656, 13194139533312, 26388279066624
+			15, 30, 53, 83, 120, 165, 218, 278, 345, 420, 503, 593, 690, 795, 908,
+			1028, 1155, 1290, 1433, 1583, 1740, 1905, 2078, 2258, 2445, 2640, 2843,
+			3053, 3270, 3495, 3728, 3968, 4215, 4470, 4733, 5003, 5280, 5565, 5858,
+			6158, 6465, 6780, 7103, 7433, 7770, 8115, 8468, 8828, 9195, 9570, 9953,
+			10343, 10740, 11145, 11558, 11978, 12405, 12840, 13283, 13733, 14190,
+			14655, 15128, 15608
 		]
 	},
 	// Save path and token
@@ -131,25 +128,26 @@ BotData.Commands = {
 			if (!args.user) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
 			var user = args.user.match(/<?@?!?(\d+)>?/);
 			if (!user) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
-			user = message.guild.members.get(user);
+			user = message.guild.members.get(user[1]);
 			var command = BotData.Commands[args.command];
 
-			var args = [];
-			if (args.arguments) args = args.arguments.split(" ");
+			var arguments = [];
+			if (args.arguments) arguments = args.arguments.split(" ");
 
 			if (typeof command == "object") {
 				// Prepare the arguments for the command
-				var nargs = args;
+				var nargs = arguments;
 				if (typeof command.arguments == "object") {
 					nargs = {};
 					var cnt = 0;
-					var argl = args.length;
+					var argl = arguments.length;
 					for (var arg in command.arguments) {
-						nargs[command.arguments[arg]] = args.shift();
+						nargs[command.arguments[arg]] = arguments.shift();
 						if (++cnt == command.arguments.length && argl > command.arguments.length)
-							nargs[command.arguments[arg]] += " " + args.join(" ");
+							nargs[command.arguments[arg]] += " " + arguments.join(" ");
 					}
 				}
+
 				// Try to execute the command
 				var nmessage = message;
 				nmessage.author = user.user;
