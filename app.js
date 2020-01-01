@@ -1,4 +1,4 @@
-/* BobCatBot Alpha 0.6.0
+/* BobCatBot Alpha 0.6.1
  * Created by crispycat
  * Bobcat project started 2019/10/27
 */
@@ -7,7 +7,7 @@ if (process.env.NODE_ENV != "production") require("dotenv").config();
 
 var FileSystem = require("fs");
 var Unzip = require("unzip");
-var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.6.0; Bobcat Discord bot" } });
+var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.6.1; Bobcat Discord bot" } });
 var DateFormat = require("dateformat");
 var Discord = require("discord.js");
 
@@ -19,7 +19,7 @@ var Log = function(object, ff = true) {
 		try {
 			FileSystem.appendFileSync(`${BotData.GlobalData.DataPath}/bot.log`, `${DateFormat(Date.now(), "yyyy-mm-dd HH:MM:ss")} ${object}\n`);
 		} catch (e) {
-			console.log("[X] LOGFILE FAILED! MESSAGES ARE NOT BEING LOGGED!");
+			console.log(`[X] LOGFILE FAILED! MESSAGES ARE NOT BEING LOGGED!\n\t${e}`);
 		}
 	}
 }
@@ -35,8 +35,8 @@ BotData.GlobalData = {
 	Version: {
 		Major: 0,
 		Minor: 6,
-		Patch: 0,
-		String: "0.6.0"
+		Patch: 1,
+		String: "0.6.1"
 	},
 	// Global access levels, only levels < 0 and >= 3 override server levels
 	AccessLevels: {
@@ -411,23 +411,22 @@ BotData.Commands = {
 		name: "help",
 		access: 0,
 		description: "Displays this list.",
-		function: function(message) {
-			message.channel.send(`${BotData.GlobalData.Assets.Emoji.Check} Check your dms!`);
-			commands = [];
-			for (var cx in BotData.Commands) {
-				command = BotData.Commands[cx];
-				if (command.access > AccessLevel(message.author.id, message.guild.id)) continue;
-				var c = {};
-				c.name = (BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix) + command.name;
-				if (command.arguments) for (var arg in command.arguments) c.name += ` <${command.arguments[arg]}>`;
-				c.value = command.description || "No description provided.";
-				commands[commands.length] = c;
+		function: function(message) {			
+			// Prepare the commands
+			var ctxt = `My prefix for ${message.guild.name} is \`${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}\`!\n`;
+			for (var c in BotData.Commands) {
+				var cmd = BotData.Commands[c];
+				if (cmd.accesslevel > AccessLevel(message.author.id, message.guild.id)) continue;
+				ctxt += `\n\`${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}${cmd.name}`;
+				if (cmd.arguments) cmd.arguments.forEach((argument) => ctxt += ` <${argument}>`);
+				ctxt += `\`: *${cmd.description || "No description provided."}*`;
 			}
+
+			// Send the commands
 			message.author.send({
 				embed: {
 					title: `${BotData.GlobalData.LongName} Commands`,
-					description: `My prefix for ${message.guild.name} is \`${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}\``,
-					fields: commands,
+					description: ctxt,
 					author: {
 						name: BotData.GlobalData.LongName,
 						icon_url: BotData.GlobalData.Assets.Icons.Profile
@@ -437,6 +436,9 @@ BotData.Commands = {
 					},
 				}
 			}).catch(Log);
+
+			// Tell the user to check DMs
+			message.channel.send(`${BotData.GlobalData.Assets.Emoji.Check} Check your DMs!`).catch(Log);
 		}
 	},
 
@@ -640,7 +642,7 @@ BotData.Commands = {
 				messages.forEach((msg) => {
 					setTimeout(() => {
 						msg.delete().catch(Log);
-					}, z++ * 50);
+					}, z++ * 150);
 				});
 			});
 		}
