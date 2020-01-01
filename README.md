@@ -26,7 +26,7 @@
 	TZ=America/New_York
 	```
 7. Open a command window, navigate to your folder and run the following:
-```
-node app.js
-```
+	```
+	node app.js
+	```
 8. Enjoy your new bot!
