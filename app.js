@@ -1,4 +1,4 @@
-/* BobCatBot Alpha 0.5.3
+/* BobCatBot Alpha 0.6.0
  * Created by crispycat
  * Bobcat project started 2019/10/27
 */
@@ -7,11 +7,22 @@ if (process.env.NODE_ENV != "production") require("dotenv").config();
 
 var FileSystem = require("fs");
 var Unzip = require("unzip");
-var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.5.0; Bobcat Discord bot" } });
+var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.6.0; Bobcat Discord bot" } });
 var DateFormat = require("dateformat");
 var Discord = require("discord.js");
-var Log = console.log;
 
+var Log = function(object, ff = true) {
+	if (ff === false) {
+		console.log(object);
+	} else {
+		console.log(`${DateFormat(Date.now(), "yyyy-mm-dd HH:MM:ss")} ${object}`);
+		try {
+			FileSystem.appendFileSync(`${BotData.GlobalData.DataPath}/bot.log`, `${DateFormat(Date.now(), "yyyy-mm-dd HH:MM:ss")} ${object}\n`);
+		} catch (e) {
+			console.log("[X] LOGFILE FAILED! MESSAGES ARE NOT BEING LOGGED!");
+		}
+	}
+}
 var Client = new Discord.Client();
 var BotData = {};
 
@@ -23,9 +34,9 @@ BotData.GlobalData = {
 	DefaultPrefix: ">",
 	Version: {
 		Major: 0,
-		Minor: 5,
-		Patch: 3,
-		String: "0.5.3"
+		Minor: 6,
+		Patch: 0,
+		String: "0.6.0"
 	},
 	// Global access levels, only levels < 0 and >= 3 override server levels
 	AccessLevels: {
@@ -89,9 +100,11 @@ BotData.GlobalData = {
 		]
 	},
 	// Save path and token
-	DataPath: "./save/botdata.json",
-	SaveInterval: 30,
-	Token: process.env.bot_token
+	DataPath: "./save",
+	SaveInterval: (process.env.NODE_ENV != "production") ? 60 : 30,
+	Token: process.env.bot_token,
+	// NSFW filter
+	NSFWFilter: /penis|di[ck]+|[ck]?o[ck]+|puss|vag|clit|cbt|ball|sex|p[o0]rn|anus|anal|ass|boob|tit/gi
 }
 
 BotData.ServerData = {};
@@ -108,11 +121,12 @@ BotData.Commands = {
 	 * }
 	 */
 
-	// Debug and data commands
+	// Execution, debug and data commands.
+	// These should be kept out of the hands of non-trusted users!
 	exec: {
 		name: "exec",
 		access: 4, // DO NOT SET THIS TO < 4 IF YOU WANT TO KEEP YOUR COMPUTER AND TOKEN SAFE!!
-		description: "Code execution command",
+		description: "Executes the given JavaScript code.",
 		arguments: ["code"],
 		function: function(message, args) {
 			message.channel.send(`Result: \`${ eval(args.code)}\``).catch(Log);
@@ -122,13 +136,12 @@ BotData.Commands = {
 	sudo: {
 		name: "sudo",
 		access: 4, // DO NOT SET THIS TO < 4 IF YOU WANT TO KEEP YOUR COMPUTER AND TOKEN SAFE!!
-		description: "Execute as user",
+		description: "Executes the given command as the given user.",
 		arguments: ["user", "command", "arguments"],
 		function: function(message, args) {
-			if (!args.user) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
-			var user = args.user.match(/<?@?!?(\d+)>?/);
+			var user = UserId(args.user);
 			if (!user) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
-			user = message.guild.members.get(user[1]);
+			user = message.guild.members.get(user);
 			var command = BotData.Commands[args.command];
 
 			var arguments = [];
@@ -162,8 +175,8 @@ BotData.Commands = {
 	save: {
 		name: "save",
 		access: 3,
-		description: "Save bot data",
-		function: function(message, _) {
+		description: "Saves the bot data.",
+		function: function(message) {
 			message.channel.send(`${BotData.GlobalData.Assets.Emoji.Up} Saving data...`).catch(Log);
 			SaveData();
 			message.channel.send(`${BotData.GlobalData.Assets.Emoji.Check} Saved!`).catch(Log);
@@ -173,8 +186,8 @@ BotData.Commands = {
 	reload: {
 		name: "reload",
 		access: 3,
-		description: "Reload bot data",
-		function: function(message, _) {
+		description: "Reloads the bot data.",
+		function: function(message) {
 			message.channel.send(`${BotData.GlobalData.Assets.Emoji.Down} Attempting to reload data...`).catch(Log);
 			try {
 				LoadData();
@@ -188,22 +201,31 @@ BotData.Commands = {
 	stop: {
 		name: "stop",
 		access: 4,
-		description: "Stop the bot",
-		function: function(message, _) {
-			message.channel.send(`${BotData.GlobalData.Assets.Emoji.Hammer} Stopping bot...`).catch(Log);
-			SaveData();
-			Client.destroy().then(process.exit);
+		description: "Safely saves the bot data, closes the connection to Discord and ends the bot process.",
+		function: function(message) {
+			message.channel.send(`${BotData.GlobalData.Assets.Emoji.Hammer} Stopping bot...`).then(() => {
+				SaveData();
+				Client.destroy().then(process.exit).catch(Log);
+			}).catch(Log);
 		}
 	},
 
-	// Administrative commands
+	error: {
+		name: "error", 
+		access: 4,
+		description: "Manually triggers an error.",
+		function: function() {
+			throw "User manually triggered the error";
+		}
+	},
+
 	accesslevel: {
 		name: "accesslevel",
 		access: 3,
+		description: "Sets a user's access level.",
 		arguments: ["user", "level"],
 		function: function(message, args) {
-			if (!args.user) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
-			var user = args.user.match(/<?@?!?(\d+)>?/);
+			var user = UserId(args.user);
 			if (!user) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
 
 			var lvl = parseInt(args.level);
@@ -220,14 +242,36 @@ BotData.Commands = {
 		}
 	},
 
+	// Settings commands
+	prefix: {
+		name: "prefix",
+		access: 2,
+		description: "Changes the bot prefix for the server.",
+		arguments: ["prefix"],
+		function: function(message, args) {
+			if (!args.prefix) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You must specify a prefix!`).catch(Log);
+			BotData.ServerData[message.guild.id].Prefix = args.prefix;
+			message.channel.send(`${BotData.GlobalData.Assets.Emoji.Check} My new prefix is \`${BotData.ServerData[message.guild.id].Prefix}\``);
+		}
+	},
+
+	levelmessages: {
+		name: "levelmessages",
+		access: 2,
+		description: "Toggles level messages for the server.",
+		function: function(message) {
+			BotData.ServerData[message.guild.id].ShowLevelMessages = BotData.ServerData[message.guild.id].ShowLevelMessages === false;
+			message.channel.send(`${BotData.GlobalData.Assets.Emoji.Check} Level messages are now ${(BotData.ServerData[message.guild.id].ShowLevelMessages) ? "en" : "dis"}abled.`).catch(Log);
+		}
+	},
+
 	addmod: {
 		name: "addmod",
 		access: 2,
-		description: "Add a moderator.",
+		description: "Adds a moderator for the server.",
 		arguments: ["user"],
 		function: function(message, args) {
-			if (!args.user) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
-			var user = args.user.match(/<?@?!?(\d+)>?/);
+			var user = UserId(args.user);
 			if (!user) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
 
 			if (BotData.ServerData[message.guild.id].AccessLevels[user] > 0) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Check} User is already a moderator!`).catch(Log);
@@ -239,11 +283,10 @@ BotData.Commands = {
 	remmod: {
 		name: "remmod",
 		access: 2,
-		description: "Remove a moderator.",
+		description: "Remove a moderator for the server.",
 		arguments: ["user"],
 		function: function(message, args) {
-			if (!args.user) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
-			var user = args.user.match(/<?@?!?(\d+)>?/);
+			var user = UserId(args.user);
 			if (!user) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
 
 			if (BotData.ServerData[message.guild.id].AccessLevels[user] != 1) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Check} User is not a moderator!`).catch(Log);
@@ -252,12 +295,12 @@ BotData.Commands = {
 		}
 	},
 
-	// Ping, echo and help commands
+	// Ping, echo and info commands
 	ping: {
 		name: "ping",
 		access: 0,
-		description: "Get the bot latency.",
-		function: function(message, _) {
+		description: "Gets the bot latency.",
+		function: function(message) {
 			var ping = Math.round(Client.ping);
 			message.channel.send(`${BotData.GlobalData.Assets.Emoji.PingPong} Pong!`, {
 				embed: {
@@ -275,6 +318,7 @@ BotData.Commands = {
 	echo: {
 		name: "echo",
 		access: 1,
+		description: "Repeats the given message.",
 		arguments: ["message"],
 		function: function(message, args) {
 			message.channel.send(args.message);
@@ -284,6 +328,7 @@ BotData.Commands = {
 	secho: {
 		name: "secho",
 		access: 1,
+		description: "Same as echo, but deletes the command message.",
 		arguments: ["message"],
 		function: function(message, args) {
 			message.channel.send(args.message);
@@ -294,16 +339,17 @@ BotData.Commands = {
 	info: {
 		name: "info",
 		access: 0,
-		function: function(message, _) {
+		description: "Shows you some bot info.",
+		function: function(message) {
 			message.channel.send({
 				embed: {
 					title: BotData.GlobalData.LongName,
 					description: `Say \`${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}help\` for a list of commands.`,
 					color: BotData.GlobalData.Assets.Colors.Primary,
-					/*author: {
+					author: {
 						name: BotData.GlobalData.LongName,
 						icon_url: BotData.GlobalData.Assets.Icons.Profile
-					},*/
+					},
 					image: {
 						url: BotData.GlobalData.Assets.Icons.Full
 					},
@@ -364,8 +410,8 @@ BotData.Commands = {
 	help: {
 		name: "help",
 		access: 0,
-		description: "Display this list.",
-		function: function(message, _) {
+		description: "Displays this list.",
+		function: function(message) {
 			message.channel.send(`${BotData.GlobalData.Assets.Emoji.Check} Check your dms!`);
 			commands = [];
 			for (var cx in BotData.Commands) {
@@ -381,18 +427,25 @@ BotData.Commands = {
 				embed: {
 					title: `${BotData.GlobalData.LongName} Commands`,
 					description: `My prefix for ${message.guild.name} is \`${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}\``,
-					fields: commands
+					fields: commands,
+					author: {
+						name: BotData.GlobalData.LongName,
+						icon_url: BotData.GlobalData.Assets.Icons.Profile
+					},
+					footer: {
+						text: `${BotData.GlobalData.LongName} v${BotData.GlobalData.Version.String}`
+					},
 				}
 			}).catch(Log);
 		}
 	},
 
-	// Level commands
+	// Level command
 	level: {
 		name: "level",
 		access: 0,
-		description: "Get your level",
-		function: function(message, _) {
+		description: "Gets your level.",
+		function: function(message) {
 			if (typeof BotData.ServerData.AllServers.Levels[message.author.id] != "object") {
 				BotData.ServerData.AllServers.Levels[message.author.id] = {
 					Level: 0,
@@ -404,38 +457,24 @@ BotData.Commands = {
 		}
 	},
 
-	// Bot settings commands
-	prefix: {
-		name: "prefix",
-		access: 2,
-		description: "Change the bot prefix.",
-		arguments: ["prefix"],
-		function: function(message, args) {
-			if (!args.prefix) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You must specify a prefix!`).catch(Log);
-			BotData.ServerData[message.guild.id].Prefix = args.prefix;
-			message.channel.send(`${BotData.GlobalData.Assets.Emoji.Check} My new prefix is \`${BotData.ServerData[message.guild.id].Prefix}\``);
-		}
-	},
-
 	// Moderator commands
 	// You'll notice the permissions are set to 0, this is intentional as each command has separate checks
 	warn: {
 		name: "warn",
 		access: 0,
-		description: "Warn a user. Moderator command.",
+		description: "Warns a user. Moderator command.",
 		arguments: ["user", "reason"],
 		function: function(message, args) {
 			var user = message.guild.member(message.author);
 
 			var allow = false;
 			if (AccessLevel(message.author.id, message.guild.id) >= 1) allow = true;
-			else if (user.hasPermission("MANAGE_MESSAGES", false, true, true)) allow = true;
+			else if (user.hasPermission("MUTE_MEMBERS", false, true, true) || user.hasPermission("KICK_USERS", false, true, true) || user.hasPermission("BAN_USERS", false, true, true)) allow = true;
 			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
 
-			if (!args.user) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
-			var target = args.user.match(/<?@?!?(\d+)>?/);
+			var target = UserId(args.user);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
-			target = message.guild.members.get(target[1]);
+			target = message.guild.members.get(target);
 
 			if (user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(message.author.id, message.guild.id) >= 3) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot warn this user.`);
 
@@ -454,20 +493,19 @@ BotData.Commands = {
 	warnings: {
 		name: "warnings",
 		access: 0,
-		description: "View a user's warnings. Moderator command.",
+		description: "Displays a user's warnings. Moderator command.",
 		arguments: ["user"],
 		function: function(message, args) {
 			var user = message.guild.member(message.author);
 
 			var allow = false;
 			if (AccessLevel(message.author.id, message.guild.id) >= 1) allow = true;
-			else if (user.hasPermission("MANAGE_MESSAGES", false, true, true)) allow = true;
+			else if (user.hasPermission("MUTE_MEMBERS", false, true, true) || user.hasPermission("KICK_USERS", false, true, true) || user.hasPermission("BAN_USERS", false, true, true)) allow = true;
 			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
 
-			if (!args.user) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
-			var target = args.user.match(/<?@?!?(\d+)>?/);
+			var target = UserId(args.user);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
-			target = message.guild.members.get(target[1]);
+			target = message.guild.members.get(target);
 
 			if (typeof BotData.ServerData[message.guild.id].Warns[message.author.id] != "object") BotData.ServerData[message.guild.id].Warns[message.author.id] = [];
 
@@ -488,20 +526,19 @@ BotData.Commands = {
 	clearwarnings: {
 		name: "clearwarnings",
 		access: 0,
-		description: "Clear a user's warnings. Moderator command.",
+		description: "Clears a user's warnings. Moderator command.",
 		arguments: ["user"],
 		function: function(message, args) {
 			var user = message.guild.member(message.author);
 
 			var allow = false;
 			if (AccessLevel(message.author.id, message.guild.id) >= 1) allow = true;
-			else if (user.hasPermission("MANAGE_MESSAGES", false, true, true)) allow = true;
+			else if (user.hasPermission("MUTE_MEMBERS", false, true, true) || user.hasPermission("KICK_USERS", false, true, true) || user.hasPermission("BAN_USERS", false, true, true)) allow = true;
 			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
 
-			if (!args.user) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
-			var target = args.user.match(/<?@?!?(\d+)>?/);
+			var target = UserId(args.user);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
-			target = message.guild.members.get(target[1]);
+			target = message.guild.members.get(target);
 
 			if (user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(message.author.id, message.guild.id) >= 3) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot clear warnings for this user.`);
 
@@ -517,20 +554,19 @@ BotData.Commands = {
 	mute: {
 		name: "mute",
 		access: 0,
-		description: "Mute a user. Moderator command.",
+		description: "Mutes a user. Moderator command.",
 		arguments: ["user", "minutes", "reason"],
 		function: function(message, args) {
 			var user = message.guild.member(message.author);
 
 			var allow = false;
 			if (AccessLevel(message.author.id, message.guild.id) >= 1) allow = true;
-			else if (user.hasPermission("MANAGE_MESSAGES", false, true, true) || user.hasPermission("MUTE_MEMBERS", false, true, true)) allow = true;
+			else if (user.hasPermission("MUTE_MEMBERS", false, true, true)) allow = true;
 			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
 
-			if (!args.user) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
-			var target = args.user.match(/<?@?!?(\d+)>?/);
+			var target = UserId(args.user);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
-			target = message.guild.members.get(target[1]);
+			target = message.guild.members.get(target);
 
 			if (user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(message.author.id, message.guild.id) >= 3) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot mute this user.`);
 
@@ -552,20 +588,19 @@ BotData.Commands = {
 	unmute: {
 		name: "unmute",
 		access: 0,
-		description: "Unmute a user. Moderator command.",
+		description: "Unmutes a user. Moderator command.",
 		arguments: ["user"],
 		function: function(message, args) {
 			var user = message.guild.member(message.author);
 
 			var allow = false;
 			if (AccessLevel(message.author.id, message.guild.id) >= 1) allow = true;
-			else if (user.hasPermission("MANAGE_MESSAGES", false, true, true) || user.hasPermission("MUTE_MEMBERS", false, true, true)) allow = true;
+			else if (user.hasPermission("MUTE_MEMBERS", false, true, true)) allow = true;
 			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
 
-			if (!args.user) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
-			var target = args.user.match(/<?@?!?(\d+)>?/);
+			var target = UserId(args.user);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
-			target = message.guild.members.get(target[1]);
+			target = message.guild.members.get(target);
 
 			if (user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(message.author.id, message.guild.id) >= 3) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot unmute this user.`);
 
@@ -583,7 +618,7 @@ BotData.Commands = {
 	purge: {
 		name: "purge",
 		access: 0,
-		description: "Purge messages in a channel. Moderator command.",
+		description: "Purges messages in a channel. Moderator command.",
 		arguments: ["amount"],
 		function: function(message, args) {
 			var user = message.guild.member(message.author);
@@ -601,8 +636,11 @@ BotData.Commands = {
 			message.react(BotData.GlobalData.Assets.Emoji.Check);
 
 			message.channel.fetchMessages({ limit: amount }).then((messages) => {
+				var z = 0;
 				messages.forEach((msg) => {
-					msg.delete().catch(Log);
+					setTimeout(() => {
+						msg.delete().catch(Log);
+					}, z++ * 50);
 				});
 			});
 		}
@@ -611,7 +649,7 @@ BotData.Commands = {
 	kick: {
 		name: "kick",
 		access: 0,
-		description: "Kick a user. Moderator Command",
+		description: "Kicks a user. Moderator Command",
 		arguments: ["user", "reason"],
 		function: function(message, args) {
 			var user = message.guild.member(message.author);
@@ -621,10 +659,9 @@ BotData.Commands = {
 			else if (user.hasPermission("KICK_USERS", false, true, true)) allow = true;
 			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
 
-			if (!args.user) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
-			var target = args.user.match(/<?@?!?(\d+)>?/);
+			var target = UserId(args.user);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
-			target = message.guild.members.get(target[1]);
+			target = message.guild.members.get(target);
 
 			if (user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(message.author.id, message.guild.id) >= 3) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot kick this user.`);
 
@@ -645,7 +682,7 @@ BotData.Commands = {
 	ban: {
 		name: "ban",
 		access: 0,
-		description: "Ban a user. Moderator Command",
+		description: "Bans a user. Moderator Command",
 		arguments: ["user", "reason"],
 		function: function(message, args) {
 			var user = message.guild.member(message.author);
@@ -655,10 +692,9 @@ BotData.Commands = {
 			else if (user.hasPermission("BAN_USERS", false, true, true)) allow = true;
 			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
 
-			if (!args.user) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
-			var target = args.user.match(/<?@?!?(\d+)>?/);
+			var target = UserId(args.user);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
-			target = message.guild.members.get(target[1]);
+			target = message.guild.members.get(target);
 
 			if (user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(message.author.id, message.guild.id) >= 3) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot ban this user.`);
 
@@ -676,18 +712,44 @@ BotData.Commands = {
 		}
 	},
 
+	unban: {
+		name: "unban",
+		access: 0,
+		description: "Unbans a user.",
+		arguments: ["user", "reason"],
+		function: function(message, args) {
+			var user = message.guild.member(message.author);
+
+			var allow = false;
+			if (AccessLevel(message.author.id, message.guild.id) >= 1) allow = true;
+			else if (user.hasPermission("BAN_USERS", false, true, true)) allow = true;
+			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
+
+			var target = UserId(args.user);
+			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
+			
+			message.guild.unban(target, args.reason || "No reason specified.").then(() => {
+				message.react(BotData.GlobalData.Assets.Emoji.Check);
+				setTimeout(() => {
+					message.delete().catch(Log);
+				}, 2000);
+			}).catch((error) => {
+				message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Could not ban user: \`${error}\`!`).catch(Log);
+				Log(error);
+			});
+		}
+	},
+
 	// Utility and fun commands
 	avatar: {
 		name: "avatar",
 		access: 0,
-		description: "Get a user's avatar.",
+		description: "Gets a user's avatar.",
 		arguments: ["user"],
 		function: function(message, args) {
 			var target;
-			if (args.user) target = args.user.match(/<?@?!?(\d+)>?/);
+			if (args.user) target = UserId(args.user);
 			else target = message.author.id;
-
-			if (target[1]) target = target[1];
 
 			Client.fetchUser(target).then((user) => {
 				message.channel.send({
@@ -709,7 +771,7 @@ BotData.Commands = {
 	emote: {
 		name: "emote",
 		access: 0,
-		description: "Get the image of an emote.",
+		description: "Gets the image of an emote.",
 		arguments: ["emote"],
 		function: function(message, args) {
 			if (!args.emote) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} No emote specified!`).catch(Log);
@@ -738,7 +800,7 @@ BotData.Commands = {
 	dice: {
 		name: "dice",
 		access: 0,
-		description: "Roll some dice.",
+		description: "Rolls some dice.",
 		arguments: ["dice"],
 		function: function(message, args) {
 			var num = parseInt(args.dice);
@@ -761,8 +823,8 @@ BotData.Commands = {
 	"8ball": {
 		name: "8ball",
 		access: 0,
-		description: "Get an answer from the 8 ball.",
-		function: function(message, _) {
+		description: "Gets an answer from the 8 ball.",
+		function: function(message) {
 			var responses = [
 				"It is certain.", "It is decidedly so.", "Without a doubt.", "Yes - definitely.", "You may rely on it.",
 				"As I see it, yes.", "Most likely.", "Outlook good.", "Yes.", "Signs point to yes.",
@@ -776,13 +838,58 @@ BotData.Commands = {
 	random: {
 		name: "random",
 		access: 0,
-		description: "Get a random number.",
+		description: "Gets a random number.",
 		arguments: ["min", "max"],
 		function: function(message, args) {
 			var min = parseInt(args.min);
 			var max = parseInt(args.max);
 			if (isNaN(min) || isNaN(max)) return message.channel.send("Please pick a minimum and maximum value!");
 			message.channel.send(`The number is ${Random(min, max)}!`);
+		}
+	},
+
+	// Search commands
+	wikipedia: {
+		name: "wikipedia",
+		access: 0,
+		description: "Searches wikipedia for the given term.",
+		arguments: ["term"],
+		function: function(message, args) {
+			if (!args.term) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You did not specify a term!`).catch(Log);
+			var term = args.term;
+			if (term != FilterNSFW(term) && !message.channel.nsfw)
+				return message.channel.send(`${BotData.GlobalData.Assets.Emoji.RedFlag} Your search contained terms that can only be used in channels marked as NSFW!`).catch(Log);
+
+			Request(`https://en.wikipedia.org/w/api.php?action=opensearch&search=${term}&limit=1&namespace=0&format=json`, { json: true }, (error, _, body) => {
+				if (body.error) error = body.error.info;
+				if (error) {
+					Log(error);
+					return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Warning} Error: \`${error}\``).catch(Log);
+				}
+
+				var data = [
+					body[1][0],
+					body[3][0]
+				];
+
+				Request(`https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&explaintext&titles=${data[0]}&format=json&exchars=320`, { json: true }, (error, _response, body) => {
+					if (error) {
+						Log(error);
+						return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Warning} Error: \`${error}\``).catch(Log);
+					}
+
+					message.channel.send({
+						embed: {
+							title: `${data[0]} on Wikipedia`,
+							description: `${body.query.pages[Object.keys(body.query.pages)[0]].extract}\n[View full article](${data[1]})`,
+							color: BotData.GlobalData.Assets.Colors.Primary,
+							footer: {
+								text: `Requested by ${message.author.tag}`
+							}
+						}
+					}).catch(Log);
+				});
+			});
 		}
 	}
 };
@@ -791,13 +898,12 @@ BotData.Commands = {
 function LoadData() {
 	Log("[i] Loading bot data...");
 	try {
-		var txt = FileSystem.readFileSync(BotData.GlobalData.DataPath);
+		var txt = FileSystem.readFileSync(`${BotData.GlobalData.DataPath}/data.json`);
 		BotData.ServerData = JSON.parse(txt);
 		if (typeof BotData.ServerData.AllServers != "object") BotData.ServerData.AllServers = { Levels: {} };
 		Log(`[i] Loaded ${txt.length} bytes`);
 	} catch (e) {
-		Log("[X] FATAL: CANNOT LOAD BOT DATA!");
-		throw e;
+		Log(`[!] Could not load bot data from file, moving on without!\n\t${e}`);
 	}
 }
 
@@ -805,8 +911,8 @@ function SaveData() {
 	Log("[i] Saving bot data...");
 	try {
 		var txt = JSON.stringify(BotData.ServerData);
-		FileSystem.writeFileSync(BotData.GlobalData.DataPath + "." + DateFormat(Date.now(), "yyyymmddHHMMss"), txt);
-		FileSystem.writeFileSync(BotData.GlobalData.DataPath, txt);
+		FileSystem.writeFileSync(`${BotData.GlobalData.DataPath}/data@${DateFormat(Date.now(), "yyyy-mm-dd_HH-MM-ss")}.json`, txt);
+		FileSystem.writeFileSync(`${BotData.GlobalData.DataPath}/data.json`, txt);
 		Log(`[i] Saved ${txt.length} bytes`);
 	} catch (e) {
 		Log("[!] COULD NOT SAVE BOT DATA!");
@@ -816,15 +922,24 @@ function SaveData() {
 
 // Exp function
 function AddExp(user, exp, channel) {
-	if (typeof BotData.ServerData.AllServers.Levels[user.id] != "object") BotData.ServerData.AllServers.Levels[user.id] = { Level: 0, Exp: 0 };
+	if (!BotData.ServerData.AllServers) BotData.ServerData.AllServers = {};
+	if (!BotData.ServerData.AllServers.Levels) BotData.ServerData.AllServers.Levels = {};
+	if (!BotData.ServerData.AllServers.Levels[user.id]) BotData.ServerData.AllServers.Levels[user.id] = { Level: 0, Exp: 0 };
 	var plvl = BotData.ServerData.AllServers.Levels[user.id].Level;
 	var nlvl = BotData.ServerData.AllServers.Levels[user.id].Level + 1;
 	BotData.ServerData.AllServers.Levels[user.id].Exp += exp;
 	if (BotData.ServerData.AllServers.Levels[user.id].Exp >= BotData.GlobalData.Levels.ExpNeeded[nlvl]) BotData.ServerData.AllServers.Levels[user.id].Level = nlvl;
-	if (BotData.ServerData.AllServers.Levels[user.id].Level > plvl) channel.send(`Congratulations ${user.username}, you reached level ${nlvl}!`);
+	if (BotData.ServerData.AllServers.Levels[user.id].Level > plvl && BotData.ServerData[channel.guild.id].ShowLevelMessages !== false) channel.send(`Congratulations ${user.username}, you reached level ${nlvl}!`);
 }
 
-// Access level function
+// User functions
+function UserId(text) {
+	if (!text) return false;
+	var user = text.match(/<?@?!?(\d+)>?/);
+	if (!user) return false;
+	return user[1] || false;
+}
+
 function AccessLevel(user, guild) {
 	var al = BotData.GlobalData.AccessLevels[user] || 0;
 	if (al <= 2) al = BotData.ServerData[guild].AccessLevels[user] || 0;
@@ -837,7 +952,13 @@ function Random(min, max, int = true) {
 	return (int === true) ? Math.round(f) : f;
 }
 
-// Main bot functions
+// NSFW filter function
+function FilterNSFW(text) {
+	if (!text) return "";
+	return text.replace(BotData.GlobalData.NSFWFilter, "_");
+}
+
+// Load the bot
 LoadData();
 setInterval(SaveData, BotData.GlobalData.SaveInterval * 1000);
 
@@ -867,17 +988,17 @@ Client.on("message", (message) => {
 	if (typeof BotData.ServerData[message.guild.id] != "object") BotData.ServerData[message.guild.id] = {
 		AccessLevels: {
 			[message.guild.owner.id]: 2
-		},
-		Muted: {}
+		}
 	};
 	if (typeof BotData.ServerData[message.guild.id].Muted != "object") BotData.ServerData[message.guild.id].Muted = {};
 	if (typeof BotData.ServerData[message.guild.id].Warns != "object") BotData.ServerData[message.guild.id].Warns = {};
-	// Is the user blacklisted or a bot?
-	if ((BotData.GlobalData.AccessLevels[message.author.id] || 0) < 0 || message.author.bot) return;
+
 	// Is the user muted?
 	if (typeof BotData.ServerData[message.guild.id].Muted[message.author.id] == "number") {
 		if (BotData.ServerData[message.guild.id].Muted[message.author.id] > Date.now()) {
-			// If must is active, delete the message and send it to the user
+			// Log message
+			Log(`[.] [G${message.guild.id}C${message.channel.id}] U${message.author.id}, muted message:\n\tID: ${message.id}\n\tContent: \`${message.content}\``);
+			// If mute is active, delete the message and send it to the user
 			try {
 				message.author.send(
 					`${BotData.GlobalData.Assets.Emoji.ZippedMouth} **[${message.guild.name}]** Uh oh, looks like you're muted!`,
@@ -892,7 +1013,11 @@ Client.on("message", (message) => {
 			} catch (e) {
 				Log(e);
 			}
-			message.delete();
+			// If the user isn't global mod+ delete the message
+			if (AccessLevel(message.author.id, message.guild.id) < 3) {
+				message.delete().catch(Log);
+				return;
+			}
 		} else {
 			// If mute is expired remove the must from the list
 			BotData.ServerData[message.guild.id].Muted[message.author.id] = null;
@@ -900,6 +1025,8 @@ Client.on("message", (message) => {
 	}
 	// Is command?
 	if (message.content.startsWith(BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix)) {
+		// Is user blacklisted?
+		if ((BotData.GlobalData.AccessLevels[message.author.id] || 0) < 0) return;
 		// Start typing to make the bot feel less like a bot
 		message.channel.startTyping();
 		// Create the array of arguments
@@ -909,6 +1036,8 @@ Client.on("message", (message) => {
 		if (typeof command == "object") {
 			// Check if the user can use this command
 			if (AccessLevel(message.author.id, message.guild.id) < command.access) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
+			// Log command
+			Log(`[$] [G${message.guild.id}C${message.channel.id}] U${message.author.id}, executed command:\n\tCommand: \`${command.name}\`\n\tArguments: [${((args.length > 0) ? "`" : "") + args.join("`, `") + ((args.length > 0) ? "`" : "")}]`);
 			// Prepare the arguments for the command
 			var nargs = args;
 			if (typeof command.arguments == "object") {
@@ -925,13 +1054,17 @@ Client.on("message", (message) => {
 			try {
 				command.function(message, nargs);
 			} catch (e) {
-				Log(e);
+				Log(`[!] Command not executed: ${e}\n\t${e.stack || "No further details."}`);
 				message.channel.send(`${BotData.GlobalData.Assets.Emoji.Warning} There was an error executing this command: ${e}\n\`${e.stack || "No further details"}\``).catch(Log);
 			}
 		} else {
 			message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} That command doesn't exist! Try \`${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}help\``).catch(Log);
 		}
 	} else {
+		if (message.author.id == Client.user.id) return;
+		// Log message
+		Log(`["] [G${message.guild.id}C${message.channel.id}] U${message.author.id}, send message:\n\tID: ${message.id}\n\tContent: \`${message.content}\``);
+		if (message.author.bot) return;
 		// Is bot mention?
 		if (typeof message.mentions.users.first() != "undefined" && message.mentions.users.first().id == Client.user.id)
 			message.channel.send(`Hello ${message.author}, my prefix is \`${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}\`.`).catch(Log);
