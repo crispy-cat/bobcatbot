@@ -1,4 +1,4 @@
-/* BobCatBot Alpha 0.6.1
+/* BobCatBot Alpha 0.7.0
  * Created by crispycat
  * Bobcat project started 2019/10/27
 */
@@ -6,8 +6,8 @@
 if (process.env.NODE_ENV != "production") require("dotenv").config();
 
 var FileSystem = require("fs");
-var Unzip = require("unzip");
-var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.6.1; Bobcat Discord bot" } });
+// var Unzip = require("unzip");
+var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.7.0; Bobcat Discord bot" } });
 var DateFormat = require("dateformat");
 var Discord = require("discord.js");
 
@@ -29,14 +29,14 @@ var BotData = {};
 // Bot settings data
 BotData.GlobalData = {
 	// Info
-	Name: "Bobcat",
-	LongName: "Bobcat Alpha",
-	DefaultPrefix: ">",
+	Name: "Bobcat Development Branch",
+	LongName: "Bobcat Alpha Development Branch",
+	DefaultPrefix: "devbranch>",
 	Version: {
 		Major: 0,
-		Minor: 6,
-		Patch: 1,
-		String: "0.6.1"
+		Minor: 7,
+		Patch: 0,
+		String: "0.7.0"
 	},
 	// Global access levels, only levels < 0 and >= 3 override server levels
 	AccessLevels: {
@@ -198,6 +198,24 @@ BotData.Commands = {
 		}
 	},
 
+	purgebackups: {
+		name: "purgebackups",
+		access: 4,
+		description: "Purges data backups.",
+		function: function(message) {
+			var bytes = 0;
+
+			FileSystem.readdirSync(BotData.GlobalData.DataPath).forEach((file) => {
+				if (file != "bot.log" && file != "data.json") {
+					bytes += FileSystem.statSync(`${BotData.GlobalData.DataPath}/${file}`).size;
+					FileSystem.unlinkSync(`${BotData.GlobalData.DataPath}/${file}`);
+				}
+			});
+			
+			message.channel.send(`${BotData.GlobalData.Assets.Emoji.Check} Purged ${bytes} bytes.`).catch(Log);
+		}
+	},
+
 	stop: {
 		name: "stop",
 		access: 4,
@@ -292,6 +310,29 @@ BotData.Commands = {
 			if (BotData.ServerData[message.guild.id].AccessLevels[user] != 1) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Check} User is not a moderator!`).catch(Log);
 			BotData.ServerData[message.guild.id].AccessLevels[user] = 0;
 			message.channel.send(`${BotData.GlobalData.Assets.Emoji.Check} User is no longer a moderator!`).catch(Log);
+		}
+	},
+
+	logchannel: {
+		name: "logchannel",
+		access: 2,
+		description: "Set or disable the log channel.",
+		arguments: ["set|disable"],
+		function: function(message, args) {
+			if (!args["set|disable"]) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Please specify an action (set|disable)`).catch(Log);
+
+			switch (args["set|disable"].toLowerCase()) {
+				case "set":
+					BotData.ServerData[message.guild.id].LogChannel = message.channel.id;
+					message.channel.send(`${BotData.GlobalData.Assets.Emoji.Check} <#${BotData.ServerData[message.guild.id].LogChannel}> is now the log channel.`).catch(Log);
+					break;
+				case "disable":
+					BotData.ServerData[message.guild.id].LogChannel = null;
+					message.channel.send(`${BotData.GlobalData.Assets.Emoji.Check} Server logs disabled.`).catch(Log);
+					break;
+				default:
+					message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Please specify an action (set|disable)`).catch(Log);
+			}
 		}
 	},
 
@@ -635,14 +676,18 @@ BotData.Commands = {
 
 			if (amount > 100) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Overwhelmed} I can only purge 100 messages at a time!`).catch(Log);
 
-			message.react(BotData.GlobalData.Assets.Emoji.Check);
+			message.channel.bulkDelete(amount, true).then((messages) => {
+				var count = messages.size;
+				if (count < amount) {
+					message.channel.fetchMessages({ limit: count - amount }).then((messages) => {
+						var z = 0;
+						messages.forEach((msg) => setTimeout(() => msg.delete().catch(Log), z++ * 150));
+						count += z;
+					});
+				}
 
-			message.channel.fetchMessages({ limit: amount }).then((messages) => {
-				var z = 0;
-				messages.forEach((msg) => {
-					setTimeout(() => {
-						msg.delete().catch(Log);
-					}, z++ * 150);
+				message.channel.send(`${BotData.GlobalData.Assets.Emoji.Check} Deleted ${count} messages!`).then((message) => {
+					setTimeout(() => message.delete().catch(Log), 2000);
 				});
 			});
 		}
@@ -845,8 +890,51 @@ BotData.Commands = {
 		function: function(message, args) {
 			var min = parseInt(args.min);
 			var max = parseInt(args.max);
-			if (isNaN(min) || isNaN(max)) return message.channel.send("Please pick a minimum and maximum value!");
+			if (isNaN(min) || isNaN(max)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Please pick a minimum and maximum value!`);
 			message.channel.send(`The number is ${Random(min, max)}!`);
+		}
+	},
+
+	match: {
+		name: "match",
+		access: 0,
+		description: "Tests how compatible two people are.",
+		arguments: ["person 1", "person 2"],
+		function: function(message, args) {
+			var p1 = args["person 1"];
+			var p2 = args["person 2"];
+			if (!p1 || !p2) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Please specify two people!`);
+			p2 = p2.split(" ")[0];
+
+			if (p1.length < p2.length) while (p1.length < p2.length) p1 += p2.charAt(p2.length - p1.length);
+			if (p2.length < p1.length) while (p2.length < p1.length) p2 += p1.charAt(p1.length - p2.length);
+
+			var s = 1;
+			for (var i = 0; i < p1.length; i++) if (p1.charAt(i) != p2.charAt(i)) s -= 1 / p1.length;
+			s = Math.round(s * 100);
+
+			var m = "Perfect!";
+			if (s < 100) m = "Excellent!";
+			if (s < 90) m = "Great!";
+			if (s < 75) m = "Good!";
+			if (s < 65) m = "Not bad!";
+			if (s < 60) m = "Fair";
+			if (s < 50) m = "Not great";
+			if (s < 40) m = "Bad";
+			if (s < 25) m = "Awful";
+			if (s < 10) m = "Horrible";
+
+			var l = "";
+			for (var i = 0.9; i < s / 10; i++) l += "\u2593 ";
+			while (l.length < 20) l += "\u2591 ";
+
+			message.channel.send({
+				embed: {
+					title: `${m}     | ${l}|`,
+					description: `Compatibility: **${s}%**`,
+					color: BotData.GlobalData.Assets.Colors.Primary
+				}
+			}).catch(Log);
 		}
 	},
 
@@ -893,6 +981,21 @@ BotData.Commands = {
 				});
 			});
 		}
+	},
+
+	urban: {
+		name: "urban",
+		access: 0,
+		description: "Shows the Urban Dictionary entry for the given term.",
+		arguments: ["term"],
+		function: function(message, args) {
+			if (!args.term) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You did not specify a term!`).catch(Log);
+			var term = args.term;
+			if (term != FilterNSFW(term) && !message.channel.nsfw)
+				return message.channel.send(`${BotData.GlobalData.Assets.Emoji.RedFlag} Your search contained terms that can only be used in channels marked as NSFW!`).catch(Log);
+
+			message.channel.send(`https://www.urbandictionary.com/define.php?term=${term.replace(" ", "+")}`);
+		}
 	}
 };
 
@@ -922,18 +1025,6 @@ function SaveData() {
 	}
 }
 
-// Exp function
-function AddExp(user, exp, channel) {
-	if (!BotData.ServerData.AllServers) BotData.ServerData.AllServers = {};
-	if (!BotData.ServerData.AllServers.Levels) BotData.ServerData.AllServers.Levels = {};
-	if (!BotData.ServerData.AllServers.Levels[user.id]) BotData.ServerData.AllServers.Levels[user.id] = { Level: 0, Exp: 0 };
-	var plvl = BotData.ServerData.AllServers.Levels[user.id].Level;
-	var nlvl = BotData.ServerData.AllServers.Levels[user.id].Level + 1;
-	BotData.ServerData.AllServers.Levels[user.id].Exp += exp;
-	if (BotData.ServerData.AllServers.Levels[user.id].Exp >= BotData.GlobalData.Levels.ExpNeeded[nlvl]) BotData.ServerData.AllServers.Levels[user.id].Level = nlvl;
-	if (BotData.ServerData.AllServers.Levels[user.id].Level > plvl && BotData.ServerData[channel.guild.id].ShowLevelMessages !== false) channel.send(`Congratulations ${user.username}, you reached level ${nlvl}!`);
-}
-
 // User functions
 function UserId(text) {
 	if (!text) return false;
@@ -948,6 +1039,17 @@ function AccessLevel(user, guild) {
 	return al;
 }
 
+function AddExp(user, exp, channel) {
+	if (!BotData.ServerData.AllServers) BotData.ServerData.AllServers = {};
+	if (!BotData.ServerData.AllServers.Levels) BotData.ServerData.AllServers.Levels = {};
+	if (!BotData.ServerData.AllServers.Levels[user.id]) BotData.ServerData.AllServers.Levels[user.id] = { Level: 0, Exp: 0 };
+	var plvl = BotData.ServerData.AllServers.Levels[user.id].Level;
+	var nlvl = BotData.ServerData.AllServers.Levels[user.id].Level + 1;
+	BotData.ServerData.AllServers.Levels[user.id].Exp += exp;
+	if (BotData.ServerData.AllServers.Levels[user.id].Exp >= BotData.GlobalData.Levels.ExpNeeded[nlvl]) BotData.ServerData.AllServers.Levels[user.id].Level = nlvl;
+	if (BotData.ServerData.AllServers.Levels[user.id].Level > plvl && BotData.ServerData[channel.guild.id].ShowLevelMessages !== false) channel.send(`Congratulations ${user.username}, you reached level ${nlvl}!`);
+}
+
 // Random function
 function Random(min, max, int = true) {
 	var f = Math.random() * (max - min) + min;
@@ -959,6 +1061,52 @@ function FilterNSFW(text) {
 	if (!text) return "";
 	return text.replace(BotData.GlobalData.NSFWFilter, "_");
 }
+
+// Server logging function
+function ServerLog(guild, data) {
+	try {
+		if (!BotData.ServerData[guild].LogChannel) return;
+		var channel = Client.channels.get(BotData.ServerData[guild].LogChannel);
+		if (channel) channel.send({
+			embed: {
+				title: data.title || "Action",
+				description: data.description || "Description",
+				color: data.color || BotData.GlobalData.Assets.Colors.Primary,
+				author: {
+					name: `${BotData.GlobalData.Name} Logs`,
+					icon_url: BotData.GlobalData.Assets.Icons.Profile
+				},
+				footer: {
+					text: DateFormat(Date.now(), "yyyy-mm-dd HH:MM:ss")
+				},
+			}
+		}).catch(Log);
+	} catch (e) {
+		Log(e);
+	}
+}
+
+// Server logging events
+Client.on("guildMemberAdd", (member) => ServerLog(member.guild.id, { title: "User joined", description: member.tag, color: BotData.GlobalData.Assets.Colors.Success }));
+Client.on("guildMemberRemove", (member) => ServerLog(member.guild.id, { title: "User left", description: member.tag, color: BotData.GlobalData.Assets.Colors.Error }));
+
+Client.on("guildBanAdd", (guild, user) => ServerLog(guild.id, { title: "User banned", description: user.tag, color: BotData.GlobalData.Assets.Colors.Error }));
+Client.on("guildBanRemove", (guild, user) => ServerLog(guild.id, { title: "User unbanned", description: user.tag, color: BotData.GlobalData.Assets.Colors.Success }));
+
+Client.on("roleCreate", (role) => ServerLog(role.guild.id, { title: "Role created", description: `${role.name} <@${role.id}>`, color: role.color || BotData.GlobalData.Assets.Colors.Success }));
+Client.on("roleDelete", (role) => ServerLog(role.guild.id, { title: "Role deleted", description: `${role.name} (${role.id})`, color: role.color || BotData.GlobalData.Assets.Colors.Error }));
+
+Client.on("channelCreate", (channel) => ServerLog(channel.guild.id, { title: "Channel created", description: `<#${channel.id}>`, color: BotData.GlobalData.Assets.Colors.Success }));
+Client.on("channelDelete", (channel) => ServerLog(channel.guild.id, { title: "Channel deleted", description: `#${channel.name} (${channel.id})`, color: BotData.GlobalData.Assets.Colors.Error }));
+
+Client.on("messageUpdate", (oldmsg, newmsg) => {
+	if (newmsg.author != Client.user && oldmsg.content != newmsg.content)
+		ServerLog(newmsg.guild.id, { title: "Message edited", description: `from <@${newmsg.author.id}> in channel <#${newmsg.channel.id}>\n>>> **Before:**\n${oldmsg.content}\n\n**After:**\n${newmsg.content}` });
+});
+Client.on("messageDelete", (message) => {
+	if (message.author != Client.user)
+		ServerLog(message.guild.id, { title: "Message deleted", description: `from <@${message.author.id}> in channel <#${message.channel.id}>\n>>> ${message.content}`, color: BotData.GlobalData.Assets.Colors.Error });
+});
 
 // Load the bot
 LoadData();
@@ -1083,7 +1231,7 @@ Client.on("ready", () => {
 	setInterval(() => {
 		Client.user.setPresence({
 			game: {
-				name: `${Client.guilds.keyArray().length} servers; ${Client.users.keyArray().length} users`,
+				name: `${Client.guilds.size} servers; ${Client.users.size} users`,
 				type: 3
 			}
 		}).catch(Log);
