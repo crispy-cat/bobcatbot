@@ -1,4 +1,4 @@
-/* BobCatBot Alpha 0.7.1
+/* BobCatBot Alpha 0.7.2
  * Created by crispycat
  * Bobcat project started 2019/10/27
 */
@@ -7,7 +7,7 @@ if (process.env.NODE_ENV != "production") require("dotenv").config();
 
 var FileSystem = require("fs");
 // var Unzip = require("unzip");
-var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.7.1; Bobcat Discord bot" } });
+var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.7.2; Bobcat Discord bot" } });
 var DateFormat = require("dateformat");
 var Discord = require("discord.js");
 
@@ -35,8 +35,8 @@ BotData.GlobalData = {
 	Version: {
 		Major: 0,
 		Minor: 7,
-		Patch: 1,
-		String: "0.7.1"
+		Patch: 2,
+		String: "0.7.2"
 	},
 	// Global access levels, only levels < 0 and >= 3 override server levels
 	AccessLevels: {
@@ -904,14 +904,16 @@ BotData.Commands = {
 			var p1 = args["person 1"];
 			var p2 = args["person 2"];
 			if (!p1 || !p2) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Please specify two people!`);
-			p2 = p2.split(" ")[0];
+			p1 = p1.toLowerCase();
+			p2 = p2.toLowerCase().split(" ")[0];
 
-			if (p1.length < p2.length) while (p1.length < p2.length) p1 += p2.charAt(p2.length - p1.length);
-			if (p2.length < p1.length) while (p2.length < p1.length) p2 += p1.charAt(p1.length - p2.length);
+			function n(str) {
+				var i = 0;
+				for (j = 0; j < str.length; j++) i += str.charCodeAt(j);
+				return i;
+			}
 
-			var s = 1;
-			for (var i = 0; i < p1.length; i++) if (p1.charAt(i) != p2.charAt(i)) s -= 1 / p1.length;
-			s = Math.round(s * 100);
+			var s = Math.round((n(p1) + n(p2)) / (p1.length % p2.length + 1)) % 100;
 
 			var m = "Perfect!";
 			if (s < 100) m = "Excellent!";
@@ -925,12 +927,12 @@ BotData.Commands = {
 			if (s < 10) m = "Horrible";
 
 			var l = "";
-			for (var i = 0.9; i < s / 10; i++) l += "\u2593 ";
-			while (l.length < 20) l += "\u2591 ";
+			for (var i = 0.5; i < s / 10; i++) l += "\u2588";
+			while (l.length < 10) l += "\u2591";
 
 			message.channel.send({
 				embed: {
-					title: `${m}     | ${l}|`,
+					title: `${m}   \u23d0${l}\u23d0`,
 					description: `Compatibility: **${s}%**`,
 					color: BotData.GlobalData.Assets.Colors.Primary
 				}
