@@ -1,4 +1,4 @@
-/* BobCatBot Alpha 0.7.0
+/* BobCatBot Alpha 0.7.1
  * Created by crispycat
  * Bobcat project started 2019/10/27
 */
@@ -7,7 +7,7 @@ if (process.env.NODE_ENV != "production") require("dotenv").config();
 
 var FileSystem = require("fs");
 // var Unzip = require("unzip");
-var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.7.0; Bobcat Discord bot" } });
+var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.7.1; Bobcat Discord bot" } });
 var DateFormat = require("dateformat");
 var Discord = require("discord.js");
 
@@ -35,8 +35,8 @@ BotData.GlobalData = {
 	Version: {
 		Major: 0,
 		Minor: 7,
-		Patch: 0,
-		String: "0.7.0"
+		Patch: 1,
+		String: "0.7.1"
 	},
 	// Global access levels, only levels < 0 and >= 3 override server levels
 	AccessLevels: {
@@ -1096,15 +1096,21 @@ Client.on("guildBanRemove", (guild, user) => ServerLog(guild.id, { title: "User 
 Client.on("roleCreate", (role) => ServerLog(role.guild.id, { title: "Role created", description: `${role.name} <@${role.id}>`, color: role.color || BotData.GlobalData.Assets.Colors.Success }));
 Client.on("roleDelete", (role) => ServerLog(role.guild.id, { title: "Role deleted", description: `${role.name} (${role.id})`, color: role.color || BotData.GlobalData.Assets.Colors.Error }));
 
-Client.on("channelCreate", (channel) => ServerLog(channel.guild.id, { title: "Channel created", description: `<#${channel.id}>`, color: BotData.GlobalData.Assets.Colors.Success }));
-Client.on("channelDelete", (channel) => ServerLog(channel.guild.id, { title: "Channel deleted", description: `#${channel.name} (${channel.id})`, color: BotData.GlobalData.Assets.Colors.Error }));
+Client.on("channelCreate", (channel) => {
+	if (channel.guild)
+		ServerLog(channel.guild.id, { title: "Channel created", description: `<#${channel.id}>`, color: BotData.GlobalData.Assets.Colors.Success });
+});
+Client.on("channelDelete", (channel) => {
+	if (channel.guild)
+		ServerLog(channel.guild.id, { title: "Channel deleted", description: `#${channel.name} (${channel.id})`, color: BotData.GlobalData.Assets.Colors.Error });
+});
 
 Client.on("messageUpdate", (oldmsg, newmsg) => {
-	if (newmsg.author != Client.user && oldmsg.content != newmsg.content)
+	if (newmsg.guild && newmsg.author != Client.user && oldmsg.content != newmsg.content)
 		ServerLog(newmsg.guild.id, { title: "Message edited", description: `from <@${newmsg.author.id}> in channel <#${newmsg.channel.id}>\n>>> **Before:**\n${oldmsg.content}\n\n**After:**\n${newmsg.content}` });
 });
 Client.on("messageDelete", (message) => {
-	if (message.author != Client.user)
+	if (message.guild && message.author != Client.user)
 		ServerLog(message.guild.id, { title: "Message deleted", description: `from <@${message.author.id}> in channel <#${message.channel.id}>\n>>> ${message.content}`, color: BotData.GlobalData.Assets.Colors.Error });
 });
 
