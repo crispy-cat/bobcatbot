@@ -1,4 +1,4 @@
-/* BobCatBot Alpha 0.7.2
+/* BobCatBot Alpha 0.7.3
  * Created by crispycat
  * Bobcat project started 2019/10/27
 */
@@ -7,7 +7,7 @@ if (process.env.NODE_ENV != "production") require("dotenv").config();
 
 var FileSystem = require("fs");
 // var Unzip = require("unzip");
-var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.7.2; Bobcat Discord bot" } });
+var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.7.3; Bobcat Discord bot" } });
 var DateFormat = require("dateformat");
 var Discord = require("discord.js");
 
@@ -35,8 +35,8 @@ BotData.GlobalData = {
 	Version: {
 		Major: 0,
 		Minor: 7,
-		Patch: 2,
-		String: "0.7.2"
+		Patch: 3,
+		String: "0.7.3"
 	},
 	// Global access levels, only levels < 0 and >= 3 override server levels
 	AccessLevels: {
@@ -1089,8 +1089,8 @@ function ServerLog(guild, data) {
 }
 
 // Server logging events
-Client.on("guildMemberAdd", (member) => ServerLog(member.guild.id, { title: "User joined", description: member.tag, color: BotData.GlobalData.Assets.Colors.Success }));
-Client.on("guildMemberRemove", (member) => ServerLog(member.guild.id, { title: "User left", description: member.tag, color: BotData.GlobalData.Assets.Colors.Error }));
+Client.on("guildMemberAdd", (member) => ServerLog(member.guild.id, { title: "User joined", description: member.user.tag, color: BotData.GlobalData.Assets.Colors.Success }));
+Client.on("guildMemberRemove", (member) => ServerLog(member.guild.id, { title: "User left", description: member.user.tag, color: BotData.GlobalData.Assets.Colors.Error }));
 
 Client.on("guildBanAdd", (guild, user) => ServerLog(guild.id, { title: "User banned", description: user.tag, color: BotData.GlobalData.Assets.Colors.Error }));
 Client.on("guildBanRemove", (guild, user) => ServerLog(guild.id, { title: "User unbanned", description: user.tag, color: BotData.GlobalData.Assets.Colors.Success }));
@@ -1122,7 +1122,7 @@ setInterval(SaveData, BotData.GlobalData.SaveInterval * 1000);
 
 Client.on("guildCreate", (guild) => {
 	if (!guild) return Log(`[!] Guild ${guild.id} added but data could not be created!`);
-	BotData.ServerData[guild.id] = {
+	if (!BotData.ServerData[guild.id]) BotData.ServerData[guild.id] = {
 		AccessLevels: {
 			[guild.owner.id]: 2
 		},
