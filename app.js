@@ -1,4 +1,4 @@
-/* BobCatBot Alpha 0.7.7
+/* BobCatBot Alpha 0.7.8
  * Created by crispycat
  * Bobcat project started 2019/10/27
 */
@@ -7,7 +7,7 @@ if (process.env.NODE_ENV != "production") require("dotenv").config();
 
 var FileSystem = require("fs");
 // var Unzip = require("unzip");
-var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.7.7; Bobcat Discord bot" } });
+var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.7.8; Bobcat Discord bot" } });
 var DateFormat = require("dateformat");
 var Discord = require("discord.js");
 
@@ -35,8 +35,8 @@ BotData.GlobalData = {
 	Version: {
 		Major: 0,
 		Minor: 7,
-		Patch: 7,
-		String: "0.7.7"
+		Patch: 8,
+		String: "0.7.8"
 	},
 	// Global access levels, only levels < 0 and >= 3 override server levels
 	AccessLevels: {
@@ -1134,6 +1134,14 @@ Client.on("guildBanRemove", (guild, user) => {
 		Log(e);
 	}
 });
+Client.on("guildMemberUpdate", (oldmbr, newmbr) => {
+	try {
+		if (oldmbr.nickname != newmbr.nickname)
+			ServerLog(newmbr.guild.id, { title: "Nickname changed", description: `<@${newmbr.id}>\nOld nickname: **${oldmbr.nickname || "(No nickname)"}**\nNew name: **${newmbr.nickname || "(No nickname)"}**`, color: BotData.GlobalData.Assets.Colors.Primary });
+	} catch (e) {
+		Log(e);
+	}
+});
 
 Client.on("roleCreate", (role) => {
 	try {
@@ -1205,14 +1213,6 @@ Client.on("messageDeleteBulk", (messages) => {
 	try {
 		if (messages.first().guild)
 			ServerLog(messages.first().guild.id, { title: "Messages deleted", description: `${messages.array.length()} messages`, color: BotData.GlobalData.Assets.Colors.Error });
-	} catch (e) {
-		Log(e);
-	}
-});
-Client.on("guildMemberUpdate", (oldmbr, newmbr) => {
-	try {
-		if (oldmbr.nickname != newmbr.nickname)
-			ServerLog(newmbr.guild.id, { title: "Nickname changed", description: `<@${newmbr.id}>\nOld nickname: **${oldmbr.nickname}**\nNew name: **${newmbr.nickname}**`, color: BotData.GlobalData.Assets.Colors.Error });
 	} catch (e) {
 		Log(e);
 	}
@@ -1299,7 +1299,7 @@ Client.on("message", (message) => {
 			// Log command
 			Log(`[$] [G${message.guild.id}C${message.channel.id}] U${message.author.id}, executed command:\n\tCommand: \`${command.name}\`\n\tArguments: [${((args.length > 0) ? "`" : "") + args.join("`, `") + ((args.length > 0) ? "`" : "")}]`);
 			try {
-				ServerLog(message.guild.id, { title: "Command used", description: `<@${message.author.id}> used command **${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}${command.name}** with arguments [${args.join(", ")}]`, color: BotData.GlobalData.Assets.Colors.Primary });
+				ServerLog(message.guild.id, { title: "Command used", description: `<@${message.author.id}> used command **${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}${command.name}** ${(args.length > 0) ? "with arguments [" + args.join(", ") + "]": ""}`, color: BotData.GlobalData.Assets.Colors.Primary });
 			} catch (e) {
 				Log(e);
 			}
