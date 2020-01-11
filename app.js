@@ -1,4 +1,4 @@
-/* BobCatBot Alpha 0.7.5
+/* BobCatBot Alpha 0.7.6
  * Created by crispycat
  * Bobcat project started 2019/10/27
 */
@@ -7,7 +7,7 @@ if (process.env.NODE_ENV != "production") require("dotenv").config();
 
 var FileSystem = require("fs");
 // var Unzip = require("unzip");
-var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.7.5; Bobcat Discord bot" } });
+var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.7.6; Bobcat Discord bot" } });
 var DateFormat = require("dateformat");
 var Discord = require("discord.js");
 
@@ -31,12 +31,12 @@ BotData.GlobalData = {
 	// Info
 	Name: "Bobcat",
 	LongName: "Bobcat Alpha",
-	DefaultPrefix: ">",
+	DefaultPrefix: "d>",
 	Version: {
 		Major: 0,
 		Minor: 7,
-		Patch: 5,
-		String: "0.7.5"
+		Patch: 6,
+		String: "0.7.6"
 	},
 	// Global access levels, only levels < 0 and >= 3 override server levels
 	AccessLevels: {
@@ -261,6 +261,22 @@ BotData.Commands = {
 	},
 
 	// Settings commands
+	resetguilddata: {
+		name: "resetguilddata",
+		access: 2,
+		description: "Resets guild data in case it becomes corrupt. Irreversable.",
+		function: function(message) {
+			BotData.ServerData[message.guild.id] = {
+				AccessLevels: {
+					[message.guild.owner.id]: 2
+				},
+				Warns: {},
+				Muted: {}
+			};
+			message.channel.send("Done").catch(Log);
+		}
+	},
+
 	prefix: {
 		name: "prefix",
 		access: 2,
@@ -1137,7 +1153,7 @@ Client.on("roleDelete", (role) => {
 });
 Client.on("roleUpdate", (oldrole, newrole) => {
 	try {
-		ServerLog(role.guild.id, { title: "Role updated", description: `${oldrole.name} <@${oldrole.id}> => ${newrole.name} <@${role.id}>`, color: newrole.color || BotData.GlobalData.Assets.Colors.Error });
+		ServerLog(role.guild.id, { title: "Role updated", description: `${oldrole.name} <@${oldrole.id}> => ${newrole.name} <@${newrole.id}>`, color: newrole.color || BotData.GlobalData.Assets.Colors.Error });
 	}
 	catch (e) {
 		Log(e);
@@ -1196,7 +1212,7 @@ Client.on("messageDeleteBulk", (messages) => {
 Client.on("guildMemberUpdate", (oldmbr, newmbr) => {
 	try {
 		if (oldmbr.nickname != newmbr.nickname)
-			ServerLog(newmbr.guild, { title: "Nickname changed", description: `<@${newmbr.id}>\nOld nickname: **${oldmbr.nickname}**\nNew name: **${newmbr.nickname}**`, color: BotData.GlobalData.Assets.Colors.Error });
+			ServerLog(newmbr.guild.id, { title: "Nickname changed", description: `<@${newmbr.id}>\nOld nickname: **${oldmbr.nickname}**\nNew name: **${newmbr.nickname}**`, color: BotData.GlobalData.Assets.Colors.Error });
 	} catch (e) {
 		Log(e);
 	}
@@ -1297,6 +1313,8 @@ Client.on("message", (message) => {
 			// Try to execute the command
 			try {
 				command.function(message, nargs);
+				ServerLog(message.guild.id, {
+					title: "Command used", description: `<@${message.author.id}> used command **${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}${command.name}** with arguments \`${args.join(", ")}\``, color: BotData.GlobalData.Assets.Colors.Primary});
 			} catch (e) {
 				Log(`[!] Command not executed: ${e}\n\t${e.stack || "No further details."}`);
 				message.channel.send(`${BotData.GlobalData.Assets.Emoji.Warning} There was an error executing this command: ${e}\n\`${e.stack || "No further details"}\``).catch(Log);
