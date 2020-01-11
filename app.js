@@ -1,4 +1,4 @@
-/* BobCatBot Alpha 0.7.3
+/* BobCatBot Alpha 0.7.5
  * Created by crispycat
  * Bobcat project started 2019/10/27
 */
@@ -7,7 +7,7 @@ if (process.env.NODE_ENV != "production") require("dotenv").config();
 
 var FileSystem = require("fs");
 // var Unzip = require("unzip");
-var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.7.3; Bobcat Discord bot" } });
+var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.7.5; Bobcat Discord bot" } });
 var DateFormat = require("dateformat");
 var Discord = require("discord.js");
 
@@ -35,8 +35,8 @@ BotData.GlobalData = {
 	Version: {
 		Major: 0,
 		Minor: 7,
-		Patch: 3,
-		String: "0.7.3"
+		Patch: 5,
+		String: "0.7.5"
 	},
 	// Global access levels, only levels < 0 and >= 3 override server levels
 	AccessLevels: {
@@ -437,7 +437,7 @@ BotData.Commands = {
 								"[Add to your server](https://discordapp.com/api/oauth2/authorize?client_id=654067311430336521&permissions=8&scope=bot)",
 								"[Minimal Permissions](https://discordapp.com/api/oauth2/authorize?client_id=654067311430336521&permissions=117824&scope=bot)",
 								"[Development Branch](https://discordapp.com/api/oauth2/authorize?client_id=654073967413559353&permissions=8&scope=bot)",
-								"[Support server](https://discord.gg/33XaQHx)"
+								"[Support server](https://discord.gg/bSJpYSY)"
 
 							].join("\n"),
 							inline: true
@@ -1089,31 +1089,117 @@ function ServerLog(guild, data) {
 }
 
 // Server logging events
-Client.on("guildMemberAdd", (member) => ServerLog(member.guild.id, { title: "User joined", description: member.user.tag, color: BotData.GlobalData.Assets.Colors.Success }));
-Client.on("guildMemberRemove", (member) => ServerLog(member.guild.id, { title: "User left", description: member.user.tag, color: BotData.GlobalData.Assets.Colors.Error }));
+Client.on("guildMemberAdd", (member) => {
+	try {
+		ServerLog(member.guild.id, { title: "User joined", description: member.user.tag, color: BotData.GlobalData.Assets.Colors.Success });
+	} catch (e) {
+		Log(e);
+	}
+});
+Client.on("guildMemberRemove", (member) => {
+	try {
+		ServerLog(member.guild.id, { title: "User left", description: member.user.tag, color: BotData.GlobalData.Assets.Colors.Error });
+	} catch (e) {
+	Log(e);
+	}
+});
 
-Client.on("guildBanAdd", (guild, user) => ServerLog(guild.id, { title: "User banned", description: user.tag, color: BotData.GlobalData.Assets.Colors.Error }));
-Client.on("guildBanRemove", (guild, user) => ServerLog(guild.id, { title: "User unbanned", description: user.tag, color: BotData.GlobalData.Assets.Colors.Success }));
+Client.on("guildBanAdd", (guild, user) => {
+	try {
+		ServerLog(guild.id, { title: "User banned", description: user.tag, color: BotData.GlobalData.Assets.Colors.Error });
+	} catch (e) {
+		Log(e);
+	}
+});
+Client.on("guildBanRemove", (guild, user) => {
+	try {
+		ServerLog(guild.id, { title: "User unbanned", description: user.tag, color: BotData.GlobalData.Assets.Colors.Success });
+	} catch (e) {
+		Log(e);
+	}
+});
 
-Client.on("roleCreate", (role) => ServerLog(role.guild.id, { title: "Role created", description: `${role.name} <@${role.id}>`, color: role.color || BotData.GlobalData.Assets.Colors.Success }));
-Client.on("roleDelete", (role) => ServerLog(role.guild.id, { title: "Role deleted", description: `${role.name} (${role.id})`, color: role.color || BotData.GlobalData.Assets.Colors.Error }));
+Client.on("roleCreate", (role) => {
+	try {
+		ServerLog(role.guild.id, { title: "Role created", description: `${role.name} <@${role.id}>`, color: role.color || BotData.GlobalData.Assets.Colors.Success });
+	}
+	catch (e) {
+		Log(e);
+	}
+});
+Client.on("roleDelete", (role) => {
+	try {
+		ServerLog(role.guild.id, { title: "Role deleted", description: `${role.name} (${role.id})`, color: role.color || BotData.GlobalData.Assets.Colors.Error });
+	}
+	catch (e) {
+		Log(e);
+	}
+});
+Client.on("roleUpdate", (oldrole, newrole) => {
+	try {
+		ServerLog(role.guild.id, { title: "Role updated", description: `${oldrole.name} <@${oldrole.id}> => ${newrole.name} <@${role.id}>`, color: newrole.color || BotData.GlobalData.Assets.Colors.Error });
+	}
+	catch (e) {
+		Log(e);
+	}
+});
 
 Client.on("channelCreate", (channel) => {
-	if (channel.guild)
-		ServerLog(channel.guild.id, { title: "Channel created", description: `<#${channel.id}>`, color: BotData.GlobalData.Assets.Colors.Success });
+	try {
+		if (channel.guild)
+			ServerLog(channel.guild.id, { title: "Channel created", description: `<#${channel.id}>`, color: BotData.GlobalData.Assets.Colors.Success });
+	} catch (e) {
+		Log(e);
+	}
 });
 Client.on("channelDelete", (channel) => {
-	if (channel.guild)
-		ServerLog(channel.guild.id, { title: "Channel deleted", description: `#${channel.name} (${channel.id})`, color: BotData.GlobalData.Assets.Colors.Error });
+	try {
+		if (channel.guild)
+			ServerLog(channel.guild.id, { title: "Channel deleted", description: `#${channel.name} (${channel.id})`, color: BotData.GlobalData.Assets.Colors.Error });
+	} catch (e) {
+		Log(e);
+	}
+});
+Client.on("channelUpdate", (oldch, newch) => {
+	try {
+		if (channel.guild)
+			ServerLog(newch.guild.id, { title: "Channel updated", description: `<#${oldch.id}> => <#${newch.id}>`, color: BotData.GlobalData.Assets.Colors.Primary });
+	} catch (e) {
+		Log(e);
+	}
 });
 
 Client.on("messageUpdate", (oldmsg, newmsg) => {
-	if (newmsg.guild && newmsg.author != Client.user && oldmsg.content != newmsg.content)
-		ServerLog(newmsg.guild.id, { title: "Message edited", description: `from <@${newmsg.author.id}> in channel <#${newmsg.channel.id}>\n>>> **Before:**\n${oldmsg.content}\n\n**After:**\n${newmsg.content}` });
+	try {
+		if (newmsg.guild && newmsg.author != Client.user && oldmsg.content != newmsg.content)
+			ServerLog(newmsg.guild.id, { title: "Message edited", description: `from <@${newmsg.author.id}> in channel <#${newmsg.channel.id}>\n>>> **Before:**\n${oldmsg.content}\n\n**After:**\n${newmsg.content}` });
+	} catch (e) {
+		Log(e);
+	}
 });
 Client.on("messageDelete", (message) => {
-	if (message.guild && message.author != Client.user)
-		ServerLog(message.guild.id, { title: "Message deleted", description: `from <@${message.author.id}> in channel <#${message.channel.id}>\n>>> ${message.content}`, color: BotData.GlobalData.Assets.Colors.Error });
+	try {
+		if (message.guild && message.author != Client.user)
+			ServerLog(message.guild.id, { title: "Message deleted", description: `from <@${message.author.id}> in channel <#${message.channel.id}>\n>>> ${message.content}`, color: BotData.GlobalData.Assets.Colors.Error });
+	} catch (e) {
+		Log(e);
+	}
+});
+Client.on("messageDeleteBulk", (messages) => {
+	try {
+		if (messages.first().guild)
+			ServerLog(messages.first().guild.id, { title: "Messages deleted", description: `${messages.array.length()} messages`, color: BotData.GlobalData.Assets.Colors.Error });
+	} catch (e) {
+		Log(e);
+	}
+});
+Client.on("guildMemberUpdate", (oldmbr, newmbr) => {
+	try {
+		if (oldmbr.nickname != newmbr.nickname)
+			ServerLog(newmbr.guild, { title: "Nickname changed", description: `<@${newmbr.id}>\nOld nickname: **${oldmbr.nickname}**\nNew name: **${newmbr.nickname}**`, color: BotData.GlobalData.Assets.Colors.Error });
+	} catch (e) {
+		Log(e);
+	}
 });
 
 // Load the bot
