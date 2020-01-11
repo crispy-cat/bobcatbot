@@ -1,4 +1,4 @@
-/* BobCatBot Alpha 0.7.8
+/* BobCatBot Alpha 0.7.9
  * Created by crispycat
  * Bobcat project started 2019/10/27
 */
@@ -7,7 +7,7 @@ if (process.env.NODE_ENV != "production") require("dotenv").config();
 
 var FileSystem = require("fs");
 // var Unzip = require("unzip");
-var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.7.8; Bobcat Discord bot" } });
+var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.7.9; Bobcat Discord bot" } });
 var DateFormat = require("dateformat");
 var Discord = require("discord.js");
 
@@ -35,8 +35,8 @@ BotData.GlobalData = {
 	Version: {
 		Major: 0,
 		Minor: 7,
-		Patch: 8,
-		String: "0.7.8"
+		Patch: 9,
+		String: "0.7.9"
 	},
 	// Global access levels, only levels < 0 and >= 3 override server levels
 	AccessLevels: {
@@ -129,7 +129,7 @@ BotData.Commands = {
 		description: "Executes the given JavaScript code.",
 		arguments: ["code"],
 		function: function(message, args) {
-			message.channel.send(`Result: \`${ eval(args.code)}\``).catch(Log);
+			message.channel.send(`Result: \`${eval(args.code)}\``).catch(Log);
 		}
 	},
 
@@ -211,7 +211,7 @@ BotData.Commands = {
 					FileSystem.unlinkSync(`${BotData.GlobalData.DataPath}/${file}`);
 				}
 			});
-			
+
 			message.channel.send(`${BotData.GlobalData.Assets.Emoji.Check} Purged ${bytes} bytes.`).catch(Log);
 		}
 	},
@@ -229,7 +229,7 @@ BotData.Commands = {
 	},
 
 	error: {
-		name: "error", 
+		name: "error",
 		access: 4,
 		description: "Manually triggers an error.",
 		function: function() {
@@ -468,7 +468,7 @@ BotData.Commands = {
 		name: "help",
 		access: 0,
 		description: "Displays this list.",
-		function: function(message) {			
+		function: function(message) {
 			// Prepare the commands
 			var ctxt = `My prefix for ${message.guild.name} is \`${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}\`!\n`;
 			for (var c in BotData.Commands) {
@@ -534,11 +534,12 @@ BotData.Commands = {
 			var target = UserId(args.user);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
 			target = message.guild.members.get(target);
+			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} I can't find this user!`).catch(Log);
 
-			if (user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(message.author.id, message.guild.id) >= 3) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot warn this user.`);
+			if (user.highestRole.comparePositionTo(target.highestRole) < 1 || AccessLevel(user.id, message.guild.id) < AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot warn this user.`);
 
-			if (typeof BotData.ServerData[message.guild.id].Warns[message.author.id] != "object") BotData.ServerData[message.guild.id].Warns[message.author.id] = [];
-			BotData.ServerData[message.guild.id].Warns[message.author.id][BotData.ServerData[message.guild.id].Warns[message.author.id].length] = { time: Date.now(), reason: args.reason || "No reason specified." };
+			if (typeof BotData.ServerData[message.guild.id].Warns[target.id] != "object") BotData.ServerData[message.guild.id].Warns[target.id] = [];
+			BotData.ServerData[message.guild.id].Warns[target.id][BotData.ServerData[message.guild.id].Warns[target.id].length] = { time: Date.now(), reason: args.reason || "No reason specified." };
 
 			target.send(`${BotData.GlobalData.Assets.Emoji.RedFlag} You have been warned in ${message.guild.name}: **${args.reason || "No reason specified."}**`);
 
@@ -565,12 +566,13 @@ BotData.Commands = {
 			var target = UserId(args.user);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
 			target = message.guild.members.get(target);
+			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} I can't find this user!`).catch(Log);
 
-			if (typeof BotData.ServerData[message.guild.id].Warns[message.author.id] != "object") BotData.ServerData[message.guild.id].Warns[message.author.id] = [];
+			if (typeof BotData.ServerData[message.guild.id].Warns[target.id] != "object") BotData.ServerData[message.guild.id].Warns[target.id] = [];
 
-			if (BotData.ServerData[message.guild.id].Warns[message.author.id].length < 1) return message.channel.send("User has no warnings.");
+			if (BotData.ServerData[message.guild.id].Warns[target.id].length < 1) return message.channel.send("User has no warnings.");
 
-			BotData.ServerData[message.guild.id].Warns[message.author.id].forEach((warning) => {
+			BotData.ServerData[message.guild.id].Warns[target.id].forEach((warning) => {
 				message.channel.send({
 					embed: {
 						title: DateFormat(Date.now(), "yyyy-mm-dd HH:MM:ss"),
@@ -598,10 +600,11 @@ BotData.Commands = {
 			var target = UserId(args.user);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
 			target = message.guild.members.get(target);
+			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} I can't find this user!`).catch(Log);
 
-			if (user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(message.author.id, message.guild.id) >= 3) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot clear warnings for this user.`);
+			if (user.highestRole.comparePositionTo(target.highestRole) < 1 || AccessLevel(user.id, message.guild.id) < AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot clear warnings for this user.`);
 
-			BotData.ServerData[message.guild.id].Warns[message.author.id] = [];
+			BotData.ServerData[message.guild.id].Warns[target.id] = [];
 
 			message.react(BotData.GlobalData.Assets.Emoji.Check);
 			setTimeout(() => {
@@ -626,8 +629,9 @@ BotData.Commands = {
 			var target = UserId(args.user);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
 			target = message.guild.members.get(target);
+			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} I can't find this user!`).catch(Log);
 
-			if (user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(message.author.id, message.guild.id) >= 3) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot mute this user.`);
+			if (user.highestRole.comparePositionTo(target.highestRole) < 1 || AccessLevel(user.id, message.guild.id) < AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot mute this user.`);
 
 			var time = parseInt(args.minutes);
 			if (!time) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid time!`).catch(Log);
@@ -660,8 +664,9 @@ BotData.Commands = {
 			var target = UserId(args.user);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
 			target = message.guild.members.get(target);
+			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} I can't find this user!`).catch(Log);
 
-			if (user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(message.author.id, message.guild.id) >= 3) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot unmute this user.`);
+			if (user.highestRole.comparePositionTo(target.highestRole) < 1 || AccessLevel(user.id, message.guild.id) < AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot unmute this user.`);
 
 			BotData.ServerData[message.guild.id].Muted[target.id] = 0;
 
@@ -725,8 +730,9 @@ BotData.Commands = {
 			var target = UserId(args.user);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
 			target = message.guild.members.get(target);
+			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} I can't find this user!`).catch(Log);
 
-			if (user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(message.author.id, message.guild.id) >= 3) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot kick this user.`);
+			if (user.highestRole.comparePositionTo(target.highestRole) < 1 || AccessLevel(user.id, message.guild.id) < AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot kick this user.`);
 
 			target.send(`${BotData.GlobalData.Assets.Emoji.Boot} You have been kicked from ${message.guild.name}: **${args.reason || "No reason specified."}**`);
 
@@ -758,8 +764,10 @@ BotData.Commands = {
 			var target = UserId(args.user);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
 			target = message.guild.members.get(target);
+			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} I can't find this user!`).catch(Log);
 
-			if (user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(message.author.id, message.guild.id) >= 3) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot ban this user.`);
+
+			if (user.highestRole.comparePositionTo(target.highestRole) < 1 || AccessLevel(user.id, message.guild.id) < AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot ban this user.`);
 
 			target.send(`${BotData.GlobalData.Assets.Emoji.Hammer} You have been banned from ${message.guild.name}: **${args.reason || "No reason specified."}**`);
 
@@ -790,7 +798,7 @@ BotData.Commands = {
 
 			var target = UserId(args.user);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
-			
+
 			message.guild.unban(target, args.reason || "No reason specified.").then(() => {
 				message.react(BotData.GlobalData.Assets.Emoji.Check);
 				setTimeout(() => {
@@ -1116,7 +1124,7 @@ Client.on("guildMemberRemove", (member) => {
 	try {
 		ServerLog(member.guild.id, { title: "User left", description: member.user.tag, color: BotData.GlobalData.Assets.Colors.Error });
 	} catch (e) {
-	Log(e);
+		Log(e);
 	}
 });
 
@@ -1299,7 +1307,7 @@ Client.on("message", (message) => {
 			// Log command
 			Log(`[$] [G${message.guild.id}C${message.channel.id}] U${message.author.id}, executed command:\n\tCommand: \`${command.name}\`\n\tArguments: [${((args.length > 0) ? "`" : "") + args.join("`, `") + ((args.length > 0) ? "`" : "")}]`);
 			try {
-				ServerLog(message.guild.id, { title: "Command used", description: `<@${message.author.id}> used command **${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}${command.name}** ${(args.length > 0) ? "with arguments [" + args.join(", ") + "]": ""}`, color: BotData.GlobalData.Assets.Colors.Primary });
+				ServerLog(message.guild.id, { title: "Command used", description: `<@${message.author.id}> used command **${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}${command.name}** ${(args.length > 0) ? "with arguments [" + args.join(", ") + "]" : ""}`, color: BotData.GlobalData.Assets.Colors.Primary });
 			} catch (e) {
 				Log(e);
 			}
