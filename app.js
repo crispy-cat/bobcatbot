@@ -1,4 +1,4 @@
-/* BobCatBot Alpha 0.7.6
+/* BobCatBot Alpha 0.7.7
  * Created by crispycat
  * Bobcat project started 2019/10/27
 */
@@ -7,7 +7,7 @@ if (process.env.NODE_ENV != "production") require("dotenv").config();
 
 var FileSystem = require("fs");
 // var Unzip = require("unzip");
-var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.7.6; Bobcat Discord bot" } });
+var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.7.7; Bobcat Discord bot" } });
 var DateFormat = require("dateformat");
 var Discord = require("discord.js");
 
@@ -29,14 +29,14 @@ var BotData = {};
 // Bot settings data
 BotData.GlobalData = {
 	// Info
-	Name: "Bobcat",
-	LongName: "Bobcat Alpha",
-	DefaultPrefix: ">",
+	Name: "Bobcat Development Branch",
+	LongName: "Bobcat Alpha Development Branch",
+	DefaultPrefix: "devbranch>",
 	Version: {
 		Major: 0,
 		Minor: 7,
-		Patch: 6,
-		String: "0.7.6"
+		Patch: 7,
+		String: "0.7.7"
 	},
 	// Global access levels, only levels < 0 and >= 3 override server levels
 	AccessLevels: {
@@ -1298,6 +1298,11 @@ Client.on("message", (message) => {
 			if (AccessLevel(message.author.id, message.guild.id) < command.access) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
 			// Log command
 			Log(`[$] [G${message.guild.id}C${message.channel.id}] U${message.author.id}, executed command:\n\tCommand: \`${command.name}\`\n\tArguments: [${((args.length > 0) ? "`" : "") + args.join("`, `") + ((args.length > 0) ? "`" : "")}]`);
+			try {
+				ServerLog(message.guild.id, { title: "Command used", description: `<@${message.author.id}> used command **${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}${command.name}** with arguments [${args.join(", ")}]`, color: BotData.GlobalData.Assets.Colors.Primary });
+			} catch (e) {
+				Log(e);
+			}
 			// Prepare the arguments for the command
 			var nargs = args;
 			if (typeof command.arguments == "object") {
@@ -1313,8 +1318,6 @@ Client.on("message", (message) => {
 			// Try to execute the command
 			try {
 				command.function(message, nargs);
-				ServerLog(message.guild.id, {
-					title: "Command used", description: `<@${message.author.id}> used command **${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}${command.name}** with arguments \`${args.join(", ")}\``, color: BotData.GlobalData.Assets.Colors.Primary});
 			} catch (e) {
 				Log(`[!] Command not executed: ${e}\n\t${e.stack || "No further details."}`);
 				message.channel.send(`${BotData.GlobalData.Assets.Emoji.Warning} There was an error executing this command: ${e}\n\`${e.stack || "No further details"}\``).catch(Log);
