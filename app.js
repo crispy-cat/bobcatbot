@@ -29,9 +29,9 @@ var BotData = {};
 // Bot settings data
 BotData.GlobalData = {
 	// Info
-	Name: "Bobcat Development Branch",
-	LongName: "Bobcat Alpha Development Branch",
-	DefaultPrefix: "devbranch>",
+	Name: "Bobcat",
+	LongName: "Bobcat Alpha",
+	DefaultPrefix: ">",
 	Version: {
 		Major: 0,
 		Minor: 7,
