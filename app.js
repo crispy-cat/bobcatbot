@@ -31,7 +31,7 @@ BotData.GlobalData = {
 	// Info
 	Name: "Bobcat",
 	LongName: "Bobcat Alpha",
-	DefaultPrefix: "d>",
+	DefaultPrefix: ">",
 	Version: {
 		Major: 0,
 		Minor: 7,
