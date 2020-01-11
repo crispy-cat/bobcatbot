@@ -1,4 +1,4 @@
-/* BobCatBot Alpha 0.7.9
+/* BobCatBot Alpha 0.7.10
  * Created by crispycat
  * Bobcat project started 2019/10/27
 */
@@ -7,7 +7,7 @@ if (process.env.NODE_ENV != "production") require("dotenv").config();
 
 var FileSystem = require("fs");
 // var Unzip = require("unzip");
-var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.7.9; Bobcat Discord bot" } });
+var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.7.10; Bobcat Discord bot" } });
 var DateFormat = require("dateformat");
 var Discord = require("discord.js");
 
@@ -29,14 +29,14 @@ var BotData = {};
 // Bot settings data
 BotData.GlobalData = {
 	// Info
-	Name: "Bobcat",
-	LongName: "Bobcat Alpha",
-	DefaultPrefix: ">",
+	Name: "BobcatDB",
+	LongName: "Bobcat Alpha DevBranch",
+	DefaultPrefix: "devbranch>",
 	Version: {
 		Major: 0,
 		Minor: 7,
-		Patch: 9,
-		String: "0.7.9"
+		Patch: 10,
+		String: "0.7.10"
 	},
 	// Global access levels, only levels < 0 and >= 3 override server levels
 	AccessLevels: {
@@ -528,7 +528,7 @@ BotData.Commands = {
 
 			var allow = false;
 			if (AccessLevel(message.author.id, message.guild.id) >= 1) allow = true;
-			else if (user.hasPermission("MUTE_MEMBERS", false, true, true) || user.hasPermission("KICK_USERS", false, true, true) || user.hasPermission("BAN_USERS", false, true, true)) allow = true;
+			else if (user.hasPermission("MUTE_MEMBERS", false, true, true) || user.hasPermission("KICK_MEMBERS", false, true, true) || user.hasPermission("BAN_MEMBERS", false, true, true)) allow = true;
 			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
 
 			var target = UserId(args.user);
@@ -536,7 +536,7 @@ BotData.Commands = {
 			target = message.guild.members.get(target);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} I can't find this user!`).catch(Log);
 
-			if (user.highestRole.comparePositionTo(target.highestRole) < 1 || AccessLevel(user.id, message.guild.id) < AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot warn this user.`);
+			if ((user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3)  || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot warn this user.`);
 
 			if (typeof BotData.ServerData[message.guild.id].Warns[target.id] != "object") BotData.ServerData[message.guild.id].Warns[target.id] = [];
 			BotData.ServerData[message.guild.id].Warns[target.id][BotData.ServerData[message.guild.id].Warns[target.id].length] = { time: Date.now(), reason: args.reason || "No reason specified." };
@@ -560,7 +560,7 @@ BotData.Commands = {
 
 			var allow = false;
 			if (AccessLevel(message.author.id, message.guild.id) >= 1) allow = true;
-			else if (user.hasPermission("MUTE_MEMBERS", false, true, true) || user.hasPermission("KICK_USERS", false, true, true) || user.hasPermission("BAN_USERS", false, true, true)) allow = true;
+			else if (user.hasPermission("MUTE_MEMBERS", false, true, true) || user.hasPermission("KICK_MEMBERS", false, true, true) || user.hasPermission("BAN_MEMBERS", false, true, true)) allow = true;
 			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
 
 			var target = UserId(args.user);
@@ -594,7 +594,7 @@ BotData.Commands = {
 
 			var allow = false;
 			if (AccessLevel(message.author.id, message.guild.id) >= 1) allow = true;
-			else if (user.hasPermission("MUTE_MEMBERS", false, true, true) || user.hasPermission("KICK_USERS", false, true, true) || user.hasPermission("BAN_USERS", false, true, true)) allow = true;
+			else if (user.hasPermission("MUTE_MEMBERS", false, true, true) || user.hasPermission("KICK_MEMBERS", false, true, true) || user.hasPermission("BAN_MEMBERS", false, true, true)) allow = true;
 			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
 
 			var target = UserId(args.user);
@@ -602,7 +602,7 @@ BotData.Commands = {
 			target = message.guild.members.get(target);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} I can't find this user!`).catch(Log);
 
-			if (user.highestRole.comparePositionTo(target.highestRole) < 1 || AccessLevel(user.id, message.guild.id) < AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot clear warnings for this user.`);
+			if ((user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3) || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot clear warnings for this user.`);
 
 			BotData.ServerData[message.guild.id].Warns[target.id] = [];
 
@@ -631,7 +631,7 @@ BotData.Commands = {
 			target = message.guild.members.get(target);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} I can't find this user!`).catch(Log);
 
-			if (user.highestRole.comparePositionTo(target.highestRole) < 1 || AccessLevel(user.id, message.guild.id) < AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot mute this user.`);
+			if ((user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3) || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot mute this user.`);
 
 			var time = parseInt(args.minutes);
 			if (!time) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid time!`).catch(Log);
@@ -666,7 +666,7 @@ BotData.Commands = {
 			target = message.guild.members.get(target);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} I can't find this user!`).catch(Log);
 
-			if (user.highestRole.comparePositionTo(target.highestRole) < 1 || AccessLevel(user.id, message.guild.id) < AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot unmute this user.`);
+			if ((user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3) || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot unmute this user.`);
 
 			BotData.ServerData[message.guild.id].Muted[target.id] = 0;
 
@@ -724,7 +724,7 @@ BotData.Commands = {
 
 			var allow = false;
 			if (AccessLevel(message.author.id, message.guild.id) >= 1) allow = true;
-			else if (user.hasPermission("KICK_USERS", false, true, true)) allow = true;
+			else if (user.hasPermission("KICK_MEMBERS", false, true, true)) allow = true;
 			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
 
 			var target = UserId(args.user);
@@ -732,7 +732,7 @@ BotData.Commands = {
 			target = message.guild.members.get(target);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} I can't find this user!`).catch(Log);
 
-			if (user.highestRole.comparePositionTo(target.highestRole) < 1 || AccessLevel(user.id, message.guild.id) < AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot kick this user.`);
+			if ((user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3) || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot kick this user.`);
 
 			target.send(`${BotData.GlobalData.Assets.Emoji.Boot} You have been kicked from ${message.guild.name}: **${args.reason || "No reason specified."}**`);
 
@@ -758,7 +758,7 @@ BotData.Commands = {
 
 			var allow = false;
 			if (AccessLevel(message.author.id, message.guild.id) >= 1) allow = true;
-			else if (user.hasPermission("BAN_USERS", false, true, true)) allow = true;
+			else if (user.hasPermission("BAN_MEMBERS", false, true, true)) allow = true;
 			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
 
 			var target = UserId(args.user);
@@ -767,7 +767,7 @@ BotData.Commands = {
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} I can't find this user!`).catch(Log);
 
 
-			if (user.highestRole.comparePositionTo(target.highestRole) < 1 || AccessLevel(user.id, message.guild.id) < AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot ban this user.`);
+			if ((user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3) || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot ban this user.`);
 
 			target.send(`${BotData.GlobalData.Assets.Emoji.Hammer} You have been banned from ${message.guild.name}: **${args.reason || "No reason specified."}**`);
 
@@ -793,7 +793,7 @@ BotData.Commands = {
 
 			var allow = false;
 			if (AccessLevel(message.author.id, message.guild.id) >= 1) allow = true;
-			else if (user.hasPermission("BAN_USERS", false, true, true)) allow = true;
+			else if (user.hasPermission("BAN_MEMBERS", false, true, true)) allow = true;
 			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
 
 			var target = UserId(args.user);
