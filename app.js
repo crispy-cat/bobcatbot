@@ -1,4 +1,4 @@
-/* BobCatBot Alpha 0.7.10
+/* BobCatBot Alpha 0.8.0
  * Created by crispycat
  * Bobcat project started 2019/10/27
 */
@@ -7,7 +7,7 @@ if (process.env.NODE_ENV != "production") require("dotenv").config();
 
 var FileSystem = require("fs");
 // var Unzip = require("unzip");
-var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.7.10; Bobcat Discord bot" } });
+var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.8.0; Bobcat Discord bot" } });
 var DateFormat = require("dateformat");
 var Discord = require("discord.js");
 
@@ -29,14 +29,14 @@ var BotData = {};
 // Bot settings data
 BotData.GlobalData = {
 	// Info
-	Name: "BobcatDB",
-	LongName: "Bobcat Alpha DevBranch",
-	DefaultPrefix: "devbranch>",
+	Name: "Bobcat",
+	LongName: "Bobcat Alpha",
+	DefaultPrefix: ">",
 	Version: {
 		Major: 0,
-		Minor: 7,
-		Patch: 10,
-		String: "0.7.10"
+		Minor: 8,
+		Patch: 0,
+		String: "0.8.0"
 	},
 	// Global access levels, only levels < 0 and >= 3 override server levels
 	AccessLevels: {
@@ -469,30 +469,40 @@ BotData.Commands = {
 		access: 0,
 		description: "Displays this list.",
 		function: function(message) {
+			var pages = [];
+			var cpage = 0;
+			var cnt = 0;
+
 			// Prepare the commands
-			var ctxt = `My prefix for ${message.guild.name} is \`${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}\`!\n`;
+			pages[cpage] = `My prefix for ${message.guild.name} is \`${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}\`!\n`;
 			for (var c in BotData.Commands) {
 				var cmd = BotData.Commands[c];
 				if (cmd.accesslevel > AccessLevel(message.author.id, message.guild.id)) continue;
-				ctxt += `\n\`${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}${cmd.name}`;
-				if (cmd.arguments) cmd.arguments.forEach((argument) => ctxt += ` <${argument}>`);
-				ctxt += `\`: *${cmd.description || "No description provided."}*`;
+				pages[cpage] += `\n\`${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}${cmd.name}`;
+				if (cmd.arguments) cmd.arguments.forEach((argument) => pages[cpage] += ` <${argument}>`);
+				pages[cpage] += `\`: *${cmd.description || "No description provided."}*`;
+				if (++cnt > 16) {
+					cnt = 0;
+					pages[++cpage] = "";
+				}
 			}
 
 			// Send the commands
-			message.author.send({
-				embed: {
-					title: `${BotData.GlobalData.LongName} Commands`,
-					description: ctxt,
-					author: {
-						name: BotData.GlobalData.LongName,
-						icon_url: BotData.GlobalData.Assets.Icons.Profile
-					},
-					footer: {
-						text: `${BotData.GlobalData.LongName} v${BotData.GlobalData.Version.String}`
-					},
-				}
-			}).catch(Log);
+			for (var page in pages) {
+				message.author.send({
+					embed: {
+						title: `${BotData.GlobalData.LongName} Commands (${parseInt(page) + 1}/${pages.length})`,
+						description: pages[page],
+						author: {
+							name: BotData.GlobalData.LongName,
+							icon_url: BotData.GlobalData.Assets.Icons.Profile
+						},
+						footer: {
+							text: `${BotData.GlobalData.LongName} v${BotData.GlobalData.Version.String}`
+						},
+					}
+				}).catch(Log);
+			}
 
 			// Tell the user to check DMs
 			message.channel.send(`${BotData.GlobalData.Assets.Emoji.Check} Check your DMs!`).catch(Log);
@@ -700,16 +710,15 @@ BotData.Commands = {
 			message.channel.bulkDelete(amount, true).then((messages) => {
 				var count = messages.size;
 				if (count < amount) {
-					message.channel.fetchMessages({ limit: count - amount }).then((messages) => {
+					message.channel.fetchMessages({ limit: amount - count }).then((messages) => {
 						var z = 0;
-						messages.forEach((msg) => setTimeout(() => msg.delete().catch(Log), z++ * 150));
+						messages.forEach((msg) => setTimeout(() => msg.delete().catch(Log), z++ * 500));
 						count += z;
+						message.channel.send(`${BotData.GlobalData.Assets.Emoji.Check} Deleted ${count} messages!`).then((message) => setTimeout(() => message.delete().catch(Log), 2000));
 					});
+				} else {
+					message.channel.send(`${BotData.GlobalData.Assets.Emoji.Check} Deleted ${count} messages!`).then((message) => setTimeout(() => message.delete().catch(Log), 2000));
 				}
-
-				message.channel.send(`${BotData.GlobalData.Assets.Emoji.Check} Deleted ${count} messages!`).then((message) => {
-					setTimeout(() => message.delete().catch(Log), 2000);
-				});
 			});
 		}
 	},
@@ -964,6 +973,36 @@ BotData.Commands = {
 		}
 	},
 
+	kitten: {
+		name: "kitten",
+		access: 0,
+		description: "Gets an image of a kitten.",
+		function: function(message) {
+			var r = Random(300, 854);
+			message.channel.send("Nyew!", {
+				files: [
+					new Discord.Attachment(`https://placekitten.com/g/${r}/${Math.round(r * 9 / 16)}`, "placekitten.jpeg")
+				]
+			}).catch(Log);
+		}
+	},
+
+	dadjoke: {
+		name: "dadjoke",
+		access: 0,
+		description: "Gets a dad joke.",
+		function: function(message) {
+			Request(`https://icanhazdadjoke.com/`, { json: true }, (error, _response, body) => {
+				if (error) {
+					Log(error);
+					message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} There was an error: ${error}`).catch();
+				}
+
+				message.channel.send(`> ${body.joke || "error"}`).catch(Log);
+			});
+		}
+	},
+
 	// Search commands
 	wikipedia: {
 		name: "wikipedia",
@@ -1020,7 +1059,7 @@ BotData.Commands = {
 			if (term != FilterNSFW(term) && !message.channel.nsfw)
 				return message.channel.send(`${BotData.GlobalData.Assets.Emoji.RedFlag} Your search contained terms that can only be used in channels marked as NSFW!`).catch(Log);
 
-			message.channel.send(`https://www.urbandictionary.com/define.php?term=${term.replace(" ", "+")}`);
+			message.channel.send(`https://www.urbandictionary.com/define.php?term=${term.replace(/ /g, "+")}`);
 		}
 	}
 };
@@ -1093,19 +1132,26 @@ function ServerLog(guild, data) {
 	try {
 		if (!BotData.ServerData[guild].LogChannel) return;
 		var channel = Client.channels.get(BotData.ServerData[guild].LogChannel);
-		if (channel) channel.send({
-			embed: {
-				title: data.title || "Action",
-				description: data.description || "Description",
-				color: data.color || BotData.GlobalData.Assets.Colors.Primary,
-				author: {
-					name: `${BotData.GlobalData.Name} Logs`,
-					icon_url: BotData.GlobalData.Assets.Icons.Profile
-				},
-				footer: {
-					text: DateFormat(Date.now(), "yyyy-mm-dd HH:MM:ss")
-				},
+
+		var emb = {
+			title: data.title || "Action",
+			description: data.description || "Description",
+			color: data.color || BotData.GlobalData.Assets.Colors.Primary,
+			author: {
+				name: `${BotData.GlobalData.Name} Logs`,
+				icon_url: BotData.GlobalData.Assets.Icons.Profile
+			},
+			footer: {
+				text: DateFormat(Date.now(), "yyyy-mm-dd HH:MM:ss")
 			}
+		};
+		if (data.image) {
+			emb.thumbnail = {};
+			emb.thumbnail.url = data.image;
+		}
+
+		if (channel) channel.send({
+			embed: emb
 		}).catch(Log);
 	} catch (e) {
 		Log(e);
@@ -1115,14 +1161,14 @@ function ServerLog(guild, data) {
 // Server logging events
 Client.on("guildMemberAdd", (member) => {
 	try {
-		ServerLog(member.guild.id, { title: "User joined", description: member.user.tag, color: BotData.GlobalData.Assets.Colors.Success });
+		ServerLog(member.guild.id, { title: "User joined", description: member.user.tag, color: BotData.GlobalData.Assets.Colors.Success, image: member.user.avatarURL });
 	} catch (e) {
 		Log(e);
 	}
 });
 Client.on("guildMemberRemove", (member) => {
 	try {
-		ServerLog(member.guild.id, { title: "User left", description: member.user.tag, color: BotData.GlobalData.Assets.Colors.Error });
+		ServerLog(member.guild.id, { title: "User left", description: member.user.tag, color: BotData.GlobalData.Assets.Colors.Error, image: member.user.avatarURL });
 	} catch (e) {
 		Log(e);
 	}
@@ -1130,14 +1176,14 @@ Client.on("guildMemberRemove", (member) => {
 
 Client.on("guildBanAdd", (guild, user) => {
 	try {
-		ServerLog(guild.id, { title: "User banned", description: user.tag, color: BotData.GlobalData.Assets.Colors.Error });
+		ServerLog(guild.id, { title: "User banned", description: user.tag, color: BotData.GlobalData.Assets.Colors.Error, image: user.avatarURL });
 	} catch (e) {
 		Log(e);
 	}
 });
 Client.on("guildBanRemove", (guild, user) => {
 	try {
-		ServerLog(guild.id, { title: "User unbanned", description: user.tag, color: BotData.GlobalData.Assets.Colors.Success });
+		ServerLog(guild.id, { title: "User unbanned", description: user.tag, color: BotData.GlobalData.Assets.Colors.Success, image: user.avatarURL });
 	} catch (e) {
 		Log(e);
 	}
@@ -1145,7 +1191,7 @@ Client.on("guildBanRemove", (guild, user) => {
 Client.on("guildMemberUpdate", (oldmbr, newmbr) => {
 	try {
 		if (oldmbr.nickname != newmbr.nickname)
-			ServerLog(newmbr.guild.id, { title: "Nickname changed", description: `<@${newmbr.id}>\nOld nickname: **${oldmbr.nickname || "(No nickname)"}**\nNew name: **${newmbr.nickname || "(No nickname)"}**`, color: BotData.GlobalData.Assets.Colors.Primary });
+			ServerLog(newmbr.guild.id, { title: "Nickname changed", description: `<@${newmbr.id}>\nOld nickname: **${oldmbr.nickname || "(No nickname)"}**\nNew name: **${newmbr.nickname || "(No nickname)"}**`, color: BotData.GlobalData.Assets.Colors.Primary, image: newmbr.user.avatarURL });
 	} catch (e) {
 		Log(e);
 	}
@@ -1220,7 +1266,7 @@ Client.on("messageDelete", (message) => {
 Client.on("messageDeleteBulk", (messages) => {
 	try {
 		if (messages.first().guild)
-			ServerLog(messages.first().guild.id, { title: "Messages deleted", description: `${messages.array.length()} messages`, color: BotData.GlobalData.Assets.Colors.Error });
+			ServerLog(messages.first().guild.id, { title: "Messages deleted", description: `${messages.array().length} messages`, color: BotData.GlobalData.Assets.Colors.Error });
 	} catch (e) {
 		Log(e);
 	}
