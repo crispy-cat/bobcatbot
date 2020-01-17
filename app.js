@@ -1,4 +1,4 @@
-/* BobCatBot Alpha 0.8.0
+/* BobCatBot Alpha 0.9.0
  * Created by crispycat
  * Bobcat project started 2019/10/27
 */
@@ -7,7 +7,7 @@ if (process.env.NODE_ENV != "production") require("dotenv").config();
 
 var FileSystem = require("fs");
 // var Unzip = require("unzip");
-var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.8.0; Bobcat Discord bot" } });
+var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.9.0; Bobcat Discord bot" } });
 var DateFormat = require("dateformat");
 var Discord = require("discord.js");
 
@@ -34,9 +34,9 @@ BotData.GlobalData = {
 	DefaultPrefix: ">",
 	Version: {
 		Major: 0,
-		Minor: 8,
+		Minor: 9,
 		Patch: 0,
-		String: "0.8.0"
+		String: "0.9.0"
 	},
 	// Global access levels, only levels < 0 and >= 3 override server levels
 	AccessLevels: {
@@ -84,7 +84,9 @@ BotData.GlobalData = {
 			Down: "\u{1f53b}",
 			PingPong: "\u{1f3d3}",
 			OneHundred: "\u{1f4af}",
-			ZippedMouth: "\u{1f910}"
+			ZippedMouth: "\u{1f910}",
+			Dad: "\u{1f468}",
+			Orange: "\u{1f34a}"
 		}
 	},
 	// Level system settings
@@ -509,6 +511,23 @@ BotData.Commands = {
 		}
 	},
 
+	// Invite command
+	getinvite: {
+		name: "getinvite",
+		access: 0,
+		description: "Gets an invite to this channel.",
+		function: function(message) {
+			if (AccessLevel(message.author.id, message.guild.id) < 1 && !message.guild.member(message.author).hasPermission("CREATE_INSTANT_INVITE", false, true, true))
+				return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't create invites here!`);
+
+			message.channel.createInvite({ temporary: false, maxAge: 0, maxUses: 1, unique: true }, `Created for ${message.author.tag}`).then((invite) => {
+				message.channel.send(invite.url);
+			}).catch((error) => {
+				message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Error creating your invite: ${error}`).catch(Log);
+			});
+		}
+	},
+
 	// Level command
 	level: {
 		name: "level",
@@ -546,7 +565,8 @@ BotData.Commands = {
 			target = message.guild.members.get(target);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} I can't find this user!`).catch(Log);
 
-			if ((user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3)  || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot warn this user.`);
+			if ((user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3) || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id))
+				return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot warn this user.`);
 
 			if (typeof BotData.ServerData[message.guild.id].Warns[target.id] != "object") BotData.ServerData[message.guild.id].Warns[target.id] = [];
 			BotData.ServerData[message.guild.id].Warns[target.id][BotData.ServerData[message.guild.id].Warns[target.id].length] = { time: Date.now(), reason: args.reason || "No reason specified." };
@@ -612,7 +632,8 @@ BotData.Commands = {
 			target = message.guild.members.get(target);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} I can't find this user!`).catch(Log);
 
-			if ((user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3) || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot clear warnings for this user.`);
+			if ((user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3) || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id))
+				return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot clear warnings for this user.`);
 
 			BotData.ServerData[message.guild.id].Warns[target.id] = [];
 
@@ -620,6 +641,42 @@ BotData.Commands = {
 			setTimeout(() => {
 				message.delete().catch(Log);
 			}, 2000);
+		}
+	},
+
+	nickname: {
+		name: "nickname",
+		access: 0,
+		description: "Sets a user's nickname. Moderator command.",
+		arguments: ["user", "nickname"],
+		function: function(message, args) {
+			var user = message.guild.member(message.author);
+
+			var allow = false;
+			if (AccessLevel(message.author.id, message.guild.id) >= 1) allow = true;
+			else if (user.hasPermission("MANAGE_NICKNAMES", false, true, true)) allow = true;
+			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
+
+			var target = UserId(args.user);
+			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
+			target = message.guild.members.get(target);
+			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} I can't find this user!`).catch(Log);
+
+			if ((user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3) || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id))
+				return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot change this user's nickname.`);
+
+			if (!args.nickname) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} No nickname specified.`).catch(Log);
+			if (args.nickname.length > 32)
+				return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Nicknames must be less than 32 characters!`).catch(Log);
+
+			target.setNickname(args.nickname).then(() => {
+				message.react(BotData.GlobalData.Assets.Emoji.Check);
+				setTimeout(() => {
+					message.delete().catch(Log);
+				}, 2000);
+			}).catch((error) => {
+				message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Error setting nickname: ${error}`).catch(Log);
+			});
 		}
 	},
 
@@ -641,7 +698,8 @@ BotData.Commands = {
 			target = message.guild.members.get(target);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} I can't find this user!`).catch(Log);
 
-			if ((user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3) || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot mute this user.`);
+			if ((user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3) || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id))
+				return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot mute this user.`);
 
 			var time = parseInt(args.minutes);
 			if (!time) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid time!`).catch(Log);
@@ -676,7 +734,8 @@ BotData.Commands = {
 			target = message.guild.members.get(target);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} I can't find this user!`).catch(Log);
 
-			if ((user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3) || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot unmute this user.`);
+			if ((user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3) || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id))
+				return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot unmute this user.`);
 
 			BotData.ServerData[message.guild.id].Muted[target.id] = 0;
 
@@ -741,7 +800,8 @@ BotData.Commands = {
 			target = message.guild.members.get(target);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} I can't find this user!`).catch(Log);
 
-			if ((user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3) || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot kick this user.`);
+			if ((user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3) || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id))
+				return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot kick this user.`);
 
 			target.send(`${BotData.GlobalData.Assets.Emoji.Boot} You have been kicked from ${message.guild.name}: **${args.reason || "No reason specified."}**`);
 
@@ -772,15 +832,16 @@ BotData.Commands = {
 
 			var target = UserId(args.user);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
-			target = message.guild.members.get(target);
-			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} I can't find this user!`).catch(Log);
 
+			var mtarget = message.guild.members.get(target);
+			if (mtarget) {
+				if ((user.highestRole.comparePositionTo(mtarget.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3) || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id))
+					return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot ban this user.`);
 
-			if ((user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3) || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id)) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot ban this user.`);
+				mtarget.send(`${BotData.GlobalData.Assets.Emoji.Hammer} You have been banned from ${message.guild.name}: **${args.reason || "No reason specified."}**`);
+			}
 
-			target.send(`${BotData.GlobalData.Assets.Emoji.Hammer} You have been banned from ${message.guild.name}: **${args.reason || "No reason specified."}**`);
-
-			target.ban(args.reason || "No reason specified.").then(() => {
+			message.guild.ban(target, { reason: args.reason || "No reason specified." }).then(() => {
 				message.react(BotData.GlobalData.Assets.Emoji.Check);
 				setTimeout(() => {
 					message.delete().catch(Log);
@@ -963,11 +1024,15 @@ BotData.Commands = {
 			for (var i = 0.5; i < s / 10; i++) l += "\u2588";
 			while (l.length < 10) l += "\u2591";
 
+			var c = BotData.GlobalData.Assets.Colors.Warning;
+			if (s >= 67) c = BotData.GlobalData.Assets.Colors.Success;
+			if (s <= 33) c = BotData.GlobalData.Assets.Colors.Error;
+
 			message.channel.send({
 				embed: {
 					title: `${m}   \u23d0${l}\u23d0`,
 					description: `Compatibility: **${s}%**`,
-					color: BotData.GlobalData.Assets.Colors.Primary
+					color: c
 				}
 			}).catch(Log);
 		}
@@ -992,13 +1057,57 @@ BotData.Commands = {
 		access: 0,
 		description: "Gets a dad joke.",
 		function: function(message) {
-			Request(`https://icanhazdadjoke.com/`, { json: true }, (error, _response, body) => {
+			Request("https://icanhazdadjoke.com/", { json: true }, (error, _response, body) => {
 				if (error) {
 					Log(error);
 					message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} There was an error: ${error}`).catch();
 				}
 
-				message.channel.send(`> ${body.joke || "error"}`).catch(Log);
+				message.channel.send(`> ${BotData.GlobalData.Assets.Emoji.Dad} ${body.joke || "error"}`).catch(Log);
+			});
+		}
+	},
+
+	trump: {
+		name: "trump",
+		access: 0,
+		description: "Gets a random trump quote.",
+		function: function(message) {
+			Request("https://api.tronalddump.io/random/quote", { json: true }, (error, _response, body) => {
+				if (error) {
+					Log(error);
+					message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} There was an error: ${error}`).catch();
+				}
+
+				message.channel.send(`> ${BotData.GlobalData.Assets.Emoji.Orange} ${body.value}`).catch(Log);
+			});
+		}
+	},
+
+	rps: {
+		name: "rps",
+		access: 0,
+		description: "Play a game of rock-paper-scissors.",
+		arguments: ["hand"],
+		function: function(message, args) {
+			if (!args.hand) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You didn't pick anything!`).catch(Log);
+			var hand = args.hand.toLowerCase();
+			if (hand == "rock") hand = 2;
+			else if (hand == "scissors") hand = 1;
+			else if (hand == "paper") hand = 0;
+			else return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You can't use that!`).catch(Log);
+
+			var bhand = Random(0, 2);
+			var result = "You win!";
+			if (hand == bhand) result = "It's a tie!";
+			if (bhand - hand == 1 || bhand - hand == -2) result = "I win!";
+
+			message.channel.send({
+				embed: {
+					title: "Rock paper scissors",
+					description: `I chose **${["paper", "scissors", "rock"][bhand]}**.\nYou chose **${args.hand}**.\n***${result}***`,
+					color: BotData.GlobalData.Assets.Colors.Secondary
+				}
 			});
 		}
 	},
@@ -1037,7 +1146,7 @@ BotData.Commands = {
 						embed: {
 							title: `${data[0]} on Wikipedia`,
 							description: `${body.query.pages[Object.keys(body.query.pages)[0]].extract}\n[View full article](${data[1]})`,
-							color: BotData.GlobalData.Assets.Colors.Primary,
+							color: BotData.GlobalData.Assets.Colors.Secondary,
 							footer: {
 								text: `Requested by ${message.author.tag}`
 							}
@@ -1266,7 +1375,7 @@ Client.on("messageDelete", (message) => {
 Client.on("messageDeleteBulk", (messages) => {
 	try {
 		if (messages.first().guild)
-			ServerLog(messages.first().guild.id, { title: "Messages deleted", description: `${messages.array().length} messages`, color: BotData.GlobalData.Assets.Colors.Error });
+			ServerLog(messages.first().guild.id, { title: "Messages deleted", description: `${messages.array().length} messages deleted in <#${messages.first().channel.id}>`, color: BotData.GlobalData.Assets.Colors.Error });
 	} catch (e) {
 		Log(e);
 	}
@@ -1338,13 +1447,14 @@ Client.on("message", (message) => {
 		}
 	}
 	// Is command?
-	if (message.content.startsWith(BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix)) {
+	var prefix = BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix;
+	if (message.content.startsWith(prefix) && !message.content.startsWith(prefix + " ")) {
 		// Is user blacklisted?
 		if ((BotData.GlobalData.AccessLevels[message.author.id] || 0) < 0) return;
 		// Start typing to make the bot feel less like a bot
 		message.channel.startTyping();
 		// Create the array of arguments
-		var args = message.content.slice((BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix).length).split(" ");
+		var args = message.content.slice(prefix.length).split(" ");
 		var command = BotData.Commands[args.shift().toLowerCase()];
 		// Does the command exist?
 		if (typeof command == "object") {
@@ -1353,7 +1463,7 @@ Client.on("message", (message) => {
 			// Log command
 			Log(`[$] [G${message.guild.id}C${message.channel.id}] U${message.author.id}, executed command:\n\tCommand: \`${command.name}\`\n\tArguments: [${((args.length > 0) ? "`" : "") + args.join("`, `") + ((args.length > 0) ? "`" : "")}]`);
 			try {
-				ServerLog(message.guild.id, { title: "Command used", description: `<@${message.author.id}> used command **${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}${command.name}** ${(args.length > 0) ? "with arguments [" + args.join(", ") + "]" : ""}`, color: BotData.GlobalData.Assets.Colors.Primary });
+				ServerLog(message.guild.id, { title: "Command used", description: `<@${message.author.id}> used command **${prefix}${command.name}** ${(args.length > 0) ? "with arguments [" + args.join(", ") + "]" : ""}`, color: BotData.GlobalData.Assets.Colors.Primary });
 			} catch (e) {
 				Log(e);
 			}
@@ -1377,7 +1487,7 @@ Client.on("message", (message) => {
 				message.channel.send(`${BotData.GlobalData.Assets.Emoji.Warning} There was an error executing this command: ${e}\n\`${e.stack || "No further details"}\``).catch(Log);
 			}
 		} else {
-			message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} That command doesn't exist! Try \`${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}help\``).catch(Log);
+			message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} That command doesn't exist! Try \`${prefix}help\``).catch(Log);
 		}
 	} else {
 		if (message.author.id == Client.user.id) return;
@@ -1386,7 +1496,7 @@ Client.on("message", (message) => {
 		if (message.author.bot) return;
 		// Is bot mention?
 		if (typeof message.mentions.users.first() != "undefined" && message.mentions.users.first().id == Client.user.id)
-			message.channel.send(`Hello ${message.author}, my prefix is \`${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}\`.`).catch(Log);
+			message.channel.send(`Hello ${message.author}, my prefix is \`${prefix}\`.`).catch(Log);
 		// Give user exp
 		else AddExp(message.author, BotData.GlobalData.Levels.ExpPerChat, message.channel);
 	}
