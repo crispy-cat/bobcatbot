@@ -1,4 +1,4 @@
-/* BobCatBot Alpha 0.9.0
+/* BobCatBot Alpha 0.9.1
  * Created by crispycat
  * Bobcat project started 2019/10/27
 */
@@ -7,7 +7,7 @@ if (process.env.NODE_ENV != "production") require("dotenv").config();
 
 var FileSystem = require("fs");
 // var Unzip = require("unzip");
-var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.9.0; Bobcat Discord bot" } });
+var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.9.1; Bobcat Discord bot" } });
 var DateFormat = require("dateformat");
 var Discord = require("discord.js");
 
@@ -35,8 +35,8 @@ BotData.GlobalData = {
 	Version: {
 		Major: 0,
 		Minor: 9,
-		Patch: 0,
-		String: "0.9.0"
+		Patch: 1,
+		String: "0.9.1"
 	},
 	// Global access levels, only levels < 0 and >= 3 override server levels
 	AccessLevels: {
@@ -51,6 +51,7 @@ BotData.GlobalData = {
 		"423102128328802306": 4,
 		"492795527038238751": 3,
 		"333986101238693890": 3,
+		"209351262284546048": 3
 	},
 	// Bot assets
 	Assets: {
@@ -479,7 +480,7 @@ BotData.Commands = {
 			pages[cpage] = `My prefix for ${message.guild.name} is \`${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}\`!\n`;
 			for (var c in BotData.Commands) {
 				var cmd = BotData.Commands[c];
-				if (cmd.accesslevel > AccessLevel(message.author.id, message.guild.id)) continue;
+				if (cmd.access > AccessLevel(message.author.id, message.guild.id)) continue;
 				pages[cpage] += `\n\`${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}${cmd.name}`;
 				if (cmd.arguments) cmd.arguments.forEach((argument) => pages[cpage] += ` <${argument}>`);
 				pages[cpage] += `\`: *${cmd.description || "No description provided."}*`;
@@ -1449,8 +1450,8 @@ Client.on("message", (message) => {
 	// Is command?
 	var prefix = BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix;
 	if (message.content.startsWith(prefix) && !message.content.startsWith(prefix + " ")) {
-		// Is user blacklisted?
-		if ((BotData.GlobalData.AccessLevels[message.author.id] || 0) < 0) return;
+		// Is user blacklisted, or is user a bot?
+		if ((BotData.GlobalData.AccessLevels[message.author.id] || 0) < 0 || message.author.bot) return;
 		// Start typing to make the bot feel less like a bot
 		message.channel.startTyping();
 		// Create the array of arguments
