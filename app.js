@@ -1,4 +1,4 @@
-/* BobCatBot Alpha 0.9.1
+/* BobCatBot Alpha 0.9.2
  * Created by crispycat
  * Bobcat project started 2019/10/27
 */
@@ -7,7 +7,7 @@ if (process.env.NODE_ENV != "production") require("dotenv").config();
 
 var FileSystem = require("fs");
 // var Unzip = require("unzip");
-var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.9.1; Bobcat Discord bot" } });
+var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.9.2; Bobcat Discord bot" } });
 var DateFormat = require("dateformat");
 var Discord = require("discord.js");
 
@@ -35,8 +35,8 @@ BotData.GlobalData = {
 	Version: {
 		Major: 0,
 		Minor: 9,
-		Patch: 1,
-		String: "0.9.1"
+		Patch: 2,
+		String: "0.9.2"
 	},
 	// Global access levels, only levels < 0 and >= 3 override server levels
 	AccessLevels: {
@@ -138,7 +138,7 @@ BotData.Commands = {
 
 	sudo: {
 		name: "sudo",
-		access: 4, // DO NOT SET THIS TO < 4 IF YOU WANT TO KEEP YOUR COMPUTER AND TOKEN SAFE!!
+		access: 3,
 		description: "Executes the given command as the given user.",
 		arguments: ["user", "command", "arguments"],
 		function: function(message, args) {
@@ -151,6 +151,9 @@ BotData.Commands = {
 			if (args.arguments) arguments = args.arguments.split(" ");
 
 			if (typeof command == "object") {
+				if (command.access > AccessLevel(message.author.id, message.guild.id))
+					return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} Nice try!`).catch(Log);
+
 				// Prepare the arguments for the command
 				var nargs = arguments;
 				if (typeof command.arguments == "object") {
