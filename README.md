@@ -14,7 +14,7 @@
 ### Getting started
 1. [Download and install Node.js](https://nodejs.org/)
 2. Create a folder on your desktop, on a USB drive, wherever you want
-3. Download [app.js] and put it in the previously created folder
+3. Download [app.js](app.js) and put it in the previously created folder
 4. Review the settings within [app.js](app.js) (lines 30-108)
 5. [Create an application and bot](https://discordapp.com/developers)
 6. Create a file in your folder called `.env` with the following text:
