@@ -1,4 +1,4 @@
-/* BobCatBot Alpha 0.9.2
+/* BobCatBot Alpha 0.9.3
  * Created by crispycat
  * Bobcat project started 2019/10/27
 */
@@ -7,7 +7,7 @@ if (process.env.NODE_ENV != "production") require("dotenv").config();
 
 var FileSystem = require("fs");
 // var Unzip = require("unzip");
-var Request = require("request").defaults({ headers: { "User-Agent": "BobCatBot 0.9.2; Bobcat Discord bot" } });
+var Request = require("request").defaults({ headers: { "User-Agent": "Bobcat Discord Bot 0.9.3" } });
 var DateFormat = require("dateformat");
 var Discord = require("discord.js");
 
@@ -35,8 +35,8 @@ BotData.GlobalData = {
 	Version: {
 		Major: 0,
 		Minor: 9,
-		Patch: 2,
-		String: "0.9.2"
+		Patch: 3,
+		String: "0.9.3"
 	},
 	// Global access levels, only levels < 0 and >= 3 override server levels
 	AccessLevels: {
@@ -666,7 +666,7 @@ BotData.Commands = {
 			target = message.guild.members.get(target);
 			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} I can't find this user!`).catch(Log);
 
-			if ((user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3) || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id))
+			if (user != target && ((user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3) || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id)))
 				return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot change this user's nickname.`);
 
 			if (!args.nickname) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} No nickname specified.`).catch(Log);
@@ -1034,7 +1034,7 @@ BotData.Commands = {
 
 			message.channel.send({
 				embed: {
-					title: `${m}   \u23d0${l}\u23d0`,
+					title: `${m}        ${l}`,
 					description: `Compatibility: **${s}%**`,
 					color: c
 				}
