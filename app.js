@@ -1,4 +1,4 @@
-/* BobCatBot Alpha 0.9.3
+/* BobCatBot Alpha 0.9.5
  * Created by crispycat
  * Bobcat project started 2019/10/27
 */
@@ -7,7 +7,7 @@ if (process.env.NODE_ENV != "production") require("dotenv").config();
 
 var FileSystem = require("fs");
 // var Unzip = require("unzip");
-var Request = require("request").defaults({ headers: { "User-Agent": "Bobcat Discord Bot 0.9.3" } });
+var Request = require("request").defaults({ headers: { "User-Agent": "Bobcat Discord Bot 0.9.5" } });
 var DateFormat = require("dateformat");
 var Discord = require("discord.js");
 
@@ -35,8 +35,8 @@ BotData.GlobalData = {
 	Version: {
 		Major: 0,
 		Minor: 9,
-		Patch: 3,
-		String: "0.9.3"
+		Patch: 5,
+		String: "0.9.5"
 	},
 	// Global access levels, only levels < 0 and >= 3 override server levels
 	AccessLevels: {
@@ -151,7 +151,7 @@ BotData.Commands = {
 			if (args.arguments) arguments = args.arguments.split(" ");
 
 			if (typeof command == "object") {
-				if (command.access > AccessLevel(message.author.id, message.guild.id))
+				if (command.access > AccessLevel(message.author.id, message.guild.id) || command.name == "sudo")
 					return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} Nice try!`).catch(Log);
 
 				// Prepare the arguments for the command
@@ -561,7 +561,7 @@ BotData.Commands = {
 
 			var allow = false;
 			if (AccessLevel(message.author.id, message.guild.id) >= 1) allow = true;
-			else if (user.hasPermission("MUTE_MEMBERS", false, true, true) || user.hasPermission("KICK_MEMBERS", false, true, true) || user.hasPermission("BAN_MEMBERS", false, true, true)) allow = true;
+			else if (user.hasPermission("MANAGE_MESSAGES", false, true, true) || user.hasPermission("KICK_MEMBERS", false, true, true) || user.hasPermission("BAN_MEMBERS", false, true, true)) allow = true;
 			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
 
 			var target = UserId(args.user);
@@ -594,7 +594,7 @@ BotData.Commands = {
 
 			var allow = false;
 			if (AccessLevel(message.author.id, message.guild.id) >= 1) allow = true;
-			else if (user.hasPermission("MUTE_MEMBERS", false, true, true) || user.hasPermission("KICK_MEMBERS", false, true, true) || user.hasPermission("BAN_MEMBERS", false, true, true)) allow = true;
+			else if (user.hasPermission("MANAGE_MESSAGES", false, true, true) || user.hasPermission("KICK_MEMBERS", false, true, true) || user.hasPermission("BAN_MEMBERS", false, true, true)) allow = true;
 			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
 
 			var target = UserId(args.user);
@@ -628,7 +628,7 @@ BotData.Commands = {
 
 			var allow = false;
 			if (AccessLevel(message.author.id, message.guild.id) >= 1) allow = true;
-			else if (user.hasPermission("MUTE_MEMBERS", false, true, true) || user.hasPermission("KICK_MEMBERS", false, true, true) || user.hasPermission("BAN_MEMBERS", false, true, true)) allow = true;
+			else if (user.hasPermission("MANAGE_MESSAGES", false, true, true) || user.hasPermission("KICK_MEMBERS", false, true, true) || user.hasPermission("BAN_MEMBERS", false, true, true)) allow = true;
 			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
 
 			var target = UserId(args.user);
@@ -694,7 +694,7 @@ BotData.Commands = {
 
 			var allow = false;
 			if (AccessLevel(message.author.id, message.guild.id) >= 1) allow = true;
-			else if (user.hasPermission("MUTE_MEMBERS", false, true, true)) allow = true;
+			else if (user.hasPermission("MANAGE_MESSAGES", false, true, true)) allow = true;
 			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
 
 			var target = UserId(args.user);
@@ -730,7 +730,7 @@ BotData.Commands = {
 
 			var allow = false;
 			if (AccessLevel(message.author.id, message.guild.id) >= 1) allow = true;
-			else if (user.hasPermission("MUTE_MEMBERS", false, true, true)) allow = true;
+			else if (user.hasPermission("MANAGE_MESSAGES", false, true, true)) allow = true;
 			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
 
 			var target = UserId(args.user);
@@ -1304,7 +1304,7 @@ Client.on("guildBanRemove", (guild, user) => {
 Client.on("guildMemberUpdate", (oldmbr, newmbr) => {
 	try {
 		if (oldmbr.nickname != newmbr.nickname)
-			ServerLog(newmbr.guild.id, { title: "Nickname changed", description: `<@${newmbr.id}>\nOld nickname: **${oldmbr.nickname || "(No nickname)"}**\nNew name: **${newmbr.nickname || "(No nickname)"}**`, color: BotData.GlobalData.Assets.Colors.Primary, image: newmbr.user.avatarURL });
+			ServerLog(newmbr.guild.id, { title: "Nickname changed", description: `<@${newmbr.id}>\nOld nickname: **${oldmbr.nickname || "(No nickname)"}**\nNew nickname: **${newmbr.nickname || "(No nickname)"}**`, color: BotData.GlobalData.Assets.Colors.Primary, image: newmbr.user.avatarURL });
 	} catch (e) {
 		Log(e);
 	}
@@ -1312,7 +1312,7 @@ Client.on("guildMemberUpdate", (oldmbr, newmbr) => {
 
 Client.on("roleCreate", (role) => {
 	try {
-		ServerLog(role.guild.id, { title: "Role created", description: `${role.name} <@${role.id}>`, color: role.color || BotData.GlobalData.Assets.Colors.Success });
+		ServerLog(role.guild.id, { title: "Role created", description: `${role.name} <@&${role.id}>`, color: role.color || BotData.GlobalData.Assets.Colors.Success });
 	}
 	catch (e) {
 		Log(e);
@@ -1328,7 +1328,7 @@ Client.on("roleDelete", (role) => {
 });
 Client.on("roleUpdate", (oldrole, newrole) => {
 	try {
-		ServerLog(role.guild.id, { title: "Role updated", description: `${oldrole.name} <@${oldrole.id}> => ${newrole.name} <@${newrole.id}>`, color: newrole.color || BotData.GlobalData.Assets.Colors.Error });
+		ServerLog(role.guild.id, { title: "Role updated", description: `${oldrole.name} <@&${oldrole.id}> => ${newrole.name} <@${newrole.id}>`, color: newrole.color || BotData.GlobalData.Assets.Colors.Error });
 	}
 	catch (e) {
 		Log(e);
