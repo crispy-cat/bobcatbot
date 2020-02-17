@@ -1,4 +1,4 @@
-/* BobCatBot Alpha 0.9.5
+/* BobCatBot Alpha 0.10.0
  * Created by crispycat
  * Bobcat project started 2019/10/27
 */
@@ -7,7 +7,7 @@ if (process.env.NODE_ENV != "production") require("dotenv").config();
 
 var FileSystem = require("fs");
 // var Unzip = require("unzip");
-var Request = require("request").defaults({ headers: { "User-Agent": "Bobcat Discord Bot 0.9.5" } });
+var Request = require("request").defaults({ headers: { "User-Agent": "Bobcat Discord Bot 0.10.0" } });
 var DateFormat = require("dateformat");
 var Discord = require("discord.js");
 
@@ -34,9 +34,9 @@ BotData.GlobalData = {
 	DefaultPrefix: ">",
 	Version: {
 		Major: 0,
-		Minor: 9,
-		Patch: 5,
-		String: "0.9.5"
+		Minor: 10,
+		Patch: 0,
+		String: "0.10.0"
 	},
 	// Global access levels, only levels < 0 and >= 3 override server levels
 	AccessLevels: {
@@ -49,9 +49,8 @@ BotData.GlobalData = {
 		*/
 		"654051938605727785": 4,
 		"423102128328802306": 4,
-		"492795527038238751": 3,
-		"333986101238693890": 3,
-		"209351262284546048": 3
+		"333986101238693890": 3, // alnm
+		"209351262284546048": 3 // mathis650
 	},
 	// Bot assets
 	Assets: {
@@ -100,11 +99,12 @@ BotData.GlobalData = {
 			6158, 6465, 6780, 7103, 7433, 7770, 8115, 8468, 8828, 9195, 9570, 9953,
 			10343, 10740, 11145, 11558, 11978, 12405, 12840, 13283, 13733, 14190,
 			14655, 15128, 15608
-		]
+		],
+		Cooldown: 5
 	},
 	// Save path and token
 	DataPath: "./save",
-	SaveInterval: (process.env.NODE_ENV != "production") ? 60 : 30,
+	SaveInterval: 120,
 	Token: process.env.bot_token,
 	// NSFW filter
 	NSFWFilter: /penis|di[ck]+|[ck]?o[ck]+|puss|vag|clit|cbt|ball|sex|p[o0]rn|anus|anal|ass|boob|tit/gi
@@ -118,6 +118,7 @@ BotData.Commands = {
 	 * command: {
 	 *	name: [command name as string],
 	 *	access: [access level as integer, 0-4],
+	 *	visibility: [optional bool or function returning bool],
 	 *	description: [optional description for the help command as string],
 	 *	args: [optional array object of arguments for the command],
 	 *	function: [function which accepts args (message, args)]
@@ -222,6 +223,20 @@ BotData.Commands = {
 		}
 	},
 
+	purgelogfile: {
+		name: "purgelogfile",
+		access: 4,
+		description: "Purges log file.",
+		function: function(message) {
+			message.channel.send("Sending log file, react any to delete it", { files: [BotData.GlobalData.DataPath + "/bot.log"] }).then((m) => {
+				m.awaitReactions(() => { return true; }, { max: 1, time: 5000, errors: ["time"] }).then(() => {
+					FileSystem.writeFileSync(`${BotData.GlobalData.DataPath}/bot.log`, "");
+					message.channel.send("DONE!").catch(Log);
+				});
+			}).catch(Log);
+		}
+	},
+
 	stop: {
 		name: "stop",
 		access: 4,
@@ -308,7 +323,7 @@ BotData.Commands = {
 	addmod: {
 		name: "addmod",
 		access: 2,
-		description: "Adds a moderator for the server.",
+		description: "Adds a Bobcat moderator to this server. Bobcat moderators can use all moderator commands regardless of role permissions.",
 		arguments: ["user"],
 		function: function(message, args) {
 			var user = UserId(args.user);
@@ -323,7 +338,7 @@ BotData.Commands = {
 	remmod: {
 		name: "remmod",
 		access: 2,
-		description: "Remove a moderator for the server.",
+		description: "Removes a Bobcat moderator from this server.",
 		arguments: ["user"],
 		function: function(message, args) {
 			var user = UserId(args.user);
@@ -484,6 +499,8 @@ BotData.Commands = {
 			for (var c in BotData.Commands) {
 				var cmd = BotData.Commands[c];
 				if (cmd.access > AccessLevel(message.author.id, message.guild.id)) continue;
+				if (typeof cmd.visibility == "function") if (cmd.visibility(message.author, message.guild) === false) continue;
+				else if (cmd.visibility === false) continue;
 				pages[cpage] += `\n\`${BotData.ServerData[message.guild.id].Prefix || BotData.GlobalData.DefaultPrefix}${cmd.name}`;
 				if (cmd.arguments) cmd.arguments.forEach((argument) => pages[cpage] += ` <${argument}>`);
 				pages[cpage] += `\`: *${cmd.description || "No description provided."}*`;
@@ -554,7 +571,14 @@ BotData.Commands = {
 	warn: {
 		name: "warn",
 		access: 0,
-		description: "Warns a user. Moderator command.",
+		visibility: function(user, guild) {
+			var allow = false;
+			user = guild.member(user);
+			if (AccessLevel(user.id, guild.id) >= 1) allow = true;
+			else if (user.hasPermission("MANAGE_MESSAGES", false, true, true) || user.hasPermission("KICK_MEMBERS", false, true, true) || user.hasPermission("BAN_MEMBERS", false, true, true)) allow = true;
+			return allow;
+		},
+		description: "Warns a user.",
 		arguments: ["user", "reason"],
 		function: function(message, args) {
 			var user = message.guild.member(message.author);
@@ -587,7 +611,14 @@ BotData.Commands = {
 	warnings: {
 		name: "warnings",
 		access: 0,
-		description: "Displays a user's warnings. Moderator command.",
+		visibility: function(user, guild) {
+			var allow = false;
+			user = guild.member(user);
+			if (AccessLevel(user.id, guild.id) >= 1) allow = true;
+			else if (user.hasPermission("MANAGE_MESSAGES", false, true, true) || user.hasPermission("KICK_MEMBERS", false, true, true) || user.hasPermission("BAN_MEMBERS", false, true, true)) allow = true;
+			return allow;
+		},
+		description: "Displays a user's warnings.",
 		arguments: ["user"],
 		function: function(message, args) {
 			var user = message.guild.member(message.author);
@@ -621,7 +652,14 @@ BotData.Commands = {
 	clearwarnings: {
 		name: "clearwarnings",
 		access: 0,
-		description: "Clears a user's warnings. Moderator command.",
+		visibility: function(user, guild) {
+			var allow = false;
+			user = guild.member(user);
+			if (AccessLevel(user.id, guild.id) >= 1) allow = true;
+			else if (user.hasPermission("MANAGE_MESSAGES", false, true, true) || user.hasPermission("KICK_MEMBERS", false, true, true) || user.hasPermission("BAN_MEMBERS", false, true, true)) allow = true;
+			return allow;
+		},
+		description: "Clears a user's warnings.",
 		arguments: ["user"],
 		function: function(message, args) {
 			var user = message.guild.member(message.author);
@@ -651,7 +689,14 @@ BotData.Commands = {
 	nickname: {
 		name: "nickname",
 		access: 0,
-		description: "Sets a user's nickname. Moderator command.",
+		visibility: function(user, guild) {
+			var allow = false;
+			user = guild.member(user);
+			if (AccessLevel(user.id, guild.id) >= 1) allow = true;
+			else if (user.hasPermission("MANAGE_NICKNAMES", false, true, true)) allow = true;
+			return allow;
+		},
+		description: "Sets a user's nickname.",
 		arguments: ["user", "nickname"],
 		function: function(message, args) {
 			var user = message.guild.member(message.author);
@@ -687,14 +732,21 @@ BotData.Commands = {
 	mute: {
 		name: "mute",
 		access: 0,
-		description: "Mutes a user. Moderator command.",
+		visibility: function(user, guild) {
+			var allow = false;
+			user = guild.member(user);
+			if (AccessLevel(user.id, guild.id) >= 1) allow = true;
+			else if (user.hasPermission("MANAGE_MESSAGES", false, true, true) || user.hasPermission("MUTE_MEMBERS", false, true, true)) allow = true;
+			return allow;
+		},
+		description: "Mutes a user.",
 		arguments: ["user", "minutes", "reason"],
 		function: function(message, args) {
 			var user = message.guild.member(message.author);
 
 			var allow = false;
 			if (AccessLevel(message.author.id, message.guild.id) >= 1) allow = true;
-			else if (user.hasPermission("MANAGE_MESSAGES", false, true, true)) allow = true;
+			else if (user.hasPermission("MANAGE_MESSAGES", false, true, true) || user.hasPermission("MUTE_MEMBERS", false, true, true)) allow = true;
 			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
 
 			var target = UserId(args.user);
@@ -723,14 +775,21 @@ BotData.Commands = {
 	unmute: {
 		name: "unmute",
 		access: 0,
-		description: "Unmutes a user. Moderator command.",
+		visibility: function(user, guild) {
+			var allow = false;
+			user = guild.member(user);
+			if (AccessLevel(user.id, guild.id) >= 1) allow = true;
+			else if (user.hasPermission("MANAGE_MESSAGES", false, true, true) || user.hasPermission("MUTE_MEMBERS", false, true, true)) allow = true;
+			return allow;
+		},
+		description: "Unmutes a user.",
 		arguments: ["user"],
 		function: function(message, args) {
 			var user = message.guild.member(message.author);
 
 			var allow = false;
 			if (AccessLevel(message.author.id, message.guild.id) >= 1) allow = true;
-			else if (user.hasPermission("MANAGE_MESSAGES", false, true, true)) allow = true;
+			else if (user.hasPermission("MANAGE_MESSAGES", false, true, true) || user.hasPermission("MUTE_MEMBERS", false, true, true)) allow = true;
 			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
 
 			var target = UserId(args.user);
@@ -755,7 +814,14 @@ BotData.Commands = {
 	purge: {
 		name: "purge",
 		access: 0,
-		description: "Purges messages in a channel. Moderator command.",
+		visibility: function(user, guild) {
+			var allow = false;
+			user = guild.member(user);
+			if (AccessLevel(user.id, guild.id) >= 1) allow = true;
+			else if (user.hasPermission("MANAGE_MESSAGES", false, true, true)) allow = true;
+			return allow;
+		},
+		description: "Purges messages in a channel.",
 		arguments: ["amount"],
 		function: function(message, args) {
 			var user = message.guild.member(message.author);
@@ -789,7 +855,14 @@ BotData.Commands = {
 	kick: {
 		name: "kick",
 		access: 0,
-		description: "Kicks a user. Moderator Command",
+		visibility: function(user, guild) {
+			var allow = false;
+			user = guild.member(user);
+			if (AccessLevel(user.id, guild.id) >= 1) allow = true;
+			else if (user.hasPermission("KICK_MEMBERS", false, true, true)) allow = true;
+			return allow;
+		},
+		description: "Kicks a user.",
 		arguments: ["user", "reason"],
 		function: function(message, args) {
 			var user = message.guild.member(message.author);
@@ -824,7 +897,14 @@ BotData.Commands = {
 	ban: {
 		name: "ban",
 		access: 0,
-		description: "Bans a user. Moderator Command",
+		visibility: function(user, guild) {
+			var allow = false;
+			user = guild.member(user);
+			if (AccessLevel(user.id, guild.id) >= 1) allow = true;
+			else if (user.hasPermission("BAN_MEMBERS", false, true, true)) allow = true;
+			return allow;
+		},
+		description: "Bans a user.",
 		arguments: ["user", "reason"],
 		function: function(message, args) {
 			var user = message.guild.member(message.author);
@@ -860,6 +940,13 @@ BotData.Commands = {
 	unban: {
 		name: "unban",
 		access: 0,
+		visibility: function(user, guild) {
+			var allow = false;
+			user = guild.member(user);
+			if (AccessLevel(user.id, guild.id) >= 1) allow = true;
+			else if (user.hasPermission("BAN_MEMBERS", false, true, true)) allow = true;
+			return allow;
+		},
 		description: "Unbans a user.",
 		arguments: ["user", "reason"],
 		function: function(message, args) {
@@ -882,6 +969,123 @@ BotData.Commands = {
 				message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Could not ban user: \`${error}\`!`).catch(Log);
 				Log(error);
 			});
+		}
+	},
+
+	softban: {
+		name: "softban",
+		access: 0,
+		visibility: function(user, guild) {
+			var allow = false;
+			user = guild.member(user);
+			if (AccessLevel(user.id, guild.id) >= 1) allow = true;
+			else if (user.hasPermission("BAN_MEMBERS", false, true, true)) allow = true;
+			return allow;
+		},
+		description: "Bans and immediately unbans a user to clear messages.",
+		arguments: ["user", "days", "reason"],
+		function: function(message, args) {
+			var user = message.guild.member(message.author);
+			var days = parseInt(args.days) || 7;
+
+			var allow = false;
+			if (AccessLevel(message.author.id, message.guild.id) >= 1) allow = true;
+			else if (user.hasPermission("BAN_MEMBERS", false, true, true)) allow = true;
+			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
+
+			var target = UserId(args.user);
+			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
+
+			var mtarget = message.guild.members.get(target);
+			if (mtarget) {
+				if ((user.highestRole.comparePositionTo(mtarget.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3) || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id))
+					return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot softban this user.`);
+
+				mtarget.send(`${BotData.GlobalData.Assets.Emoji.Hammer} You have been softbanned from ${message.guild.name}: **${args.reason || "No reason specified."}**. You may rejoin with a new invite link.`);
+			}
+
+			message.guild.ban(target, { days: days, reason: args.reason || "No reason specified." }).then(() => {
+				message.guild.unban(target, { reason: `Softban - ${args.reason || "No reason specified."}`}).then(() => {
+					message.react(BotData.GlobalData.Assets.Emoji.Check);
+					setTimeout(() => {
+						message.delete().catch(Log);
+					}, 2000);
+				}).catch((error) => {
+					message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Could not unban user: \`${error}\`!`).catch(Log);
+					Log(error);
+				});
+			}).catch((error) => {
+				message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Could not ban user: \`${error}\`!`).catch(Log);
+				Log(error);
+			});
+		}
+	},
+
+	role: {
+		name: "role",
+		access: 0,
+		visibility: function(user, guild) {
+			var allow = false;
+			user = guild.member(user);
+			if (AccessLevel(user.id, guild.id) >= 1) allow = true;
+			else if (user.hasPermission("MANAGE_ROLES", false, true, true)) allow = true;
+			return allow;
+		},
+		description: "Command for managing users' roles.",
+		arguments: ["add/remove", "user", "role"],
+		function: function(message, args) {
+			var user = message.guild.member(message.author);
+
+			var allow = false;
+			if (AccessLevel(message.author.id, message.guild.id) >= 1) allow = true;
+			else if (user.hasPermission("MANAGE_ROLES", false, true, true)) allow = true;
+			if (!allow) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.Nerd} You can't use that!`).catch(Log);
+
+			var target = UserId(args.user);
+			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid user!`).catch(Log);
+			target = message.guild.members.get(target);
+			if (!target) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} I can't find this user!`).catch(Log);
+
+			if ((user.highestRole.comparePositionTo(target.highestRole) < 1 && AccessLevel(user.id, message.guild.id) < 3) || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id))
+				return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot manage this user's roles.`);
+
+			if (!args.role) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} No role specified!`).catch(Log);
+			var role = message.guild.roles.find((role) => role.name.toLowerCase() == args.role.toLowerCase());
+			if (!role) return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid role!`).catch(Log);
+
+			if ((user.highestRole.comparePositionTo(role) < 1 && AccessLevel(user.id, message.guild.id) < 3) || AccessLevel(user.id, message.guild.id) <= AccessLevel(target.id, message.guild.id))
+				return message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} You cannot add or remove this role.`);
+
+
+			var mode = args["add/remove"];
+			if (mode) mode = mode.toLowerCase();
+
+			switch (mode) {
+				case "add":
+					target.addRole(role).then(() => {
+						message.react(BotData.GlobalData.Assets.Emoji.Check);
+						setTimeout(() => {
+							message.delete().catch(Log);
+						}, 2000);
+					}).catch((error) => {
+						message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Could not add role: \`${error}\`!`).catch(Log);
+						Log(error);
+					});
+					break;
+				case "remove":
+					target.removeRole(role).then(() => {
+						message.react(BotData.GlobalData.Assets.Emoji.Check);
+						setTimeout(() => {
+							message.delete().catch(Log);
+						}, 2000);
+					}).catch((error) => {
+						message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Could not remote role: \`${error}\`!`).catch(Log);
+						Log(error);
+					});
+					break;
+				default:
+					message.channel.send(`${BotData.GlobalData.Assets.Emoji.X} Invalid mode!`).catch(Log);
+			}
 		}
 	},
 
@@ -1183,11 +1387,20 @@ function LoadData() {
 	try {
 		var txt = FileSystem.readFileSync(`${BotData.GlobalData.DataPath}/data.json`);
 		BotData.ServerData = JSON.parse(txt);
-		if (typeof BotData.ServerData.AllServers != "object") BotData.ServerData.AllServers = { Levels: {} };
+		if (!BotData.ServerData.AllServers) BotData.ServerData.AllServers = {};
+		if (!BotData.ServerData.AllServers.Levels) BotData.ServerData.AllServers.Levels = {};
+		if (!BotData.ServerData.AllServers.LevelCooldowns) BotData.ServerData.AllServers.LevelCooldowns = {};
 		Log(`[i] Loaded ${txt.length} bytes`);
 	} catch (e) {
 		Log(`[!] Could not load bot data from file, moving on without!\n\t${e}`);
 	}
+	setInterval(() => {
+		for (var id in BotData.ServerData.AllServers.LevelCooldowns) {
+			c = BotData.ServerData.AllServers.LevelCooldowns[id];
+			if (c > 0) BotData.ServerData.AllServers.LevelCooldowns[id]--;
+		}
+	}, 1000);
+	Log(`[i] Level cooldown timer started`);
 }
 
 function SaveData() {
@@ -1218,8 +1431,9 @@ function AccessLevel(user, guild) {
 }
 
 function AddExp(user, exp, channel) {
-	if (!BotData.ServerData.AllServers) BotData.ServerData.AllServers = {};
-	if (!BotData.ServerData.AllServers.Levels) BotData.ServerData.AllServers.Levels = {};
+	if (!BotData.ServerData.AllServers.LevelCooldowns[user.id]) BotData.ServerData.AllServers.LevelCooldowns[user.id] = 0;
+	if (BotData.ServerData.AllServers.LevelCooldowns[user.id] != 0) return;
+	BotData.ServerData.AllServers.LevelCooldowns[user.id] = BotData.GlobalData.Levels.Cooldown;
 	if (!BotData.ServerData.AllServers.Levels[user.id]) BotData.ServerData.AllServers.Levels[user.id] = { Level: 0, Exp: 0 };
 	var plvl = BotData.ServerData.AllServers.Levels[user.id].Level;
 	var nlvl = BotData.ServerData.AllServers.Levels[user.id].Level + 1;
