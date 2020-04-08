@@ -1,4 +1,4 @@
-/* BobCatBot Alpha 0.11.1
+/* BobCatBot Alpha 0.11.2
  * Created by crispycat
  * Bobcat project started 2019/10/27
 */
@@ -7,7 +7,7 @@ if (process.env.NODE_ENV != "production") require("dotenv").config();
 
 var FileSystem = require("fs");
 // var Unzip = require("unzip");
-var Request = require("request").defaults({ headers: { "User-Agent": "Bobcat Discord Bot 0.11.1" } });
+var Request = require("request").defaults({ headers: { "User-Agent": "Bobcat Discord Bot 0.11.2" } });
 var DateFormat = require("dateformat");
 var Discord = require("discord.js");
 
@@ -34,8 +34,8 @@ BotData.GlobalData = {
 	Version: {
 		Major: 0,
 		Minor: 11,
-		Patch: 1,
-		String: "0.11.1"
+		Patch: 2,
+		String: "0.11.2"
 	},
 	// Global access levels, only levels < 0 and >= 3 override server levels
 	AccessLevels: {
@@ -322,16 +322,6 @@ BotData.Commands = {
 			BotData.ServerData[message.guild.id] = null;
 			InitializeServer(message.guild);
 			message.channel.send("Done").catch(Log);
-		}
-	},
-
-	levelmessages: {
-		name: "levelmessages",
-		access: 2,
-		description: "Toggles level messages for the server.",
-		function: function(message) {
-			BotData.ServerData[message.guild.id].ShowLevelMessages = BotData.ServerData[message.guild.id].ShowLevelMessages === false;
-			message.channel.send(`${BotData.GlobalData.Assets.Emoji.Check} Level messages are now ${(BotData.ServerData[message.guild.id].ShowLevelMessages) ? "en" : "dis"}abled.`).catch(Log);
 		}
 	},
 
