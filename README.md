@@ -5,7 +5,7 @@
 - One script
 - Easily customizable
 - Simple to add, remove and modify commands
-- Host yourself or [invite to your server](https://discordapp.com/api/oauth2/authorize?client_id=654067311430336521&permissions=8&scope=bot)
+- Host yourself or [invite to your server](https://discordapp.com/oauth2/authorize?client_id=681181594412646442&permissions=8&scope=bot)
 
 ### Support
 - [Support server](https://discord.gg/a66StMe)
