@@ -1,4 +1,4 @@
-/* BobCatBot Alpha 0.11.0
+/* BobCatBot Alpha 0.11.1
  * Created by crispycat
  * Bobcat project started 2019/10/27
 */
@@ -7,7 +7,7 @@ if (process.env.NODE_ENV != "production") require("dotenv").config();
 
 var FileSystem = require("fs");
 // var Unzip = require("unzip");
-var Request = require("request").defaults({ headers: { "User-Agent": "Bobcat Discord Bot 0.11.0" } });
+var Request = require("request").defaults({ headers: { "User-Agent": "Bobcat Discord Bot 0.11.1" } });
 var DateFormat = require("dateformat");
 var Discord = require("discord.js");
 
@@ -34,8 +34,8 @@ BotData.GlobalData = {
 	Version: {
 		Major: 0,
 		Minor: 11,
-		Patch: 0,
-		String: "0.11.0"
+		Patch: 1,
+		String: "0.11.1"
 	},
 	// Global access levels, only levels < 0 and >= 3 override server levels
 	AccessLevels: {
@@ -47,7 +47,8 @@ BotData.GlobalData = {
 		 * >= 4: Bot Owner, can use all commands and use execution features
 		*/
 		"681153017281904670": 4,
-		"423102128328802306": 3,
+		"654051938605727785": 4,
+		"423102128328802306": 4,
 		"333986101238693890": 3, // alnm
 		"209351262284546048": 3 // mathis650
 	},
@@ -524,7 +525,7 @@ BotData.Commands = {
 						},
 						{
 							name: "Developer",
-							value: "crispycat\nJohnSteeds#4687",
+							value: "crispycat\nSovereignBeak#9147",
 							inline: true
 						},
 						{
@@ -537,16 +538,6 @@ BotData.Commands = {
 							value: [
 								"https://nodejs.org",
 								"https://discord.js.org",
-							].join("\n"),
-							inline: true
-						},
-						{
-							name: "Testers",
-							value: [
-								"Inco#0713",
-								"Blogworldexp#2732",
-								"Mr Cone Man#4073",
-								"teknowafel#6746"
 							].join("\n"),
 							inline: true
 						},
@@ -1579,17 +1570,6 @@ function AddExp(user, exp, channel) {
 		if (message.Disabled) return;
 		channel.send(message.Value.replace("{level}", "" + levels[user.id].Level).replace("{name}", user.tag).replace("{mention}", `<@${user.id}>`)).catch(Log);
 	}
-	
-	return;
-	if (!BotData.ServerData.AllServers.LevelCooldowns[user.id]) BotData.ServerData.AllServers.LevelCooldowns[user.id] = 0;
-	if (BotData.ServerData.AllServers.LevelCooldowns[user.id] != 0) return;
-	BotData.ServerData.AllServers.LevelCooldowns[user.id] = BotData.GlobalData.Levels.Cooldown;
-	if (!BotData.ServerData.AllServers.Levels[user.id]) BotData.ServerData.AllServers.Levels[user.id] = { Level: 0, Exp: 0 };
-	var plvl = BotData.ServerData.AllServers.Levels[user.id].Level;
-	var nlvl = BotData.ServerData.AllServers.Levels[user.id].Level + 1;
-	BotData.ServerData.AllServers.Levels[user.id].Exp += exp;
-	if (BotData.ServerData.AllServers.Levels[user.id].Exp >= BotData.GlobalData.Levels.ExpNeeded[nlvl]) BotData.ServerData.AllServers.Levels[user.id].Level = nlvl;
-	if (BotData.ServerData.AllServers.Levels[user.id].Level > plvl && BotData.ServerData[channel.guild.id].ShowLevelMessages !== false) channel.send(`Congratulations ${user.username}, you reached level ${nlvl}!`);
 }
 
 // Data type functions
@@ -1788,7 +1768,7 @@ Client.on("guildCreate", (guild) => {
 		guild.channels.forEach((c) => {
 			if (typeof c.send == "function" && !channel) channel = c;
 		})
-		channel.send(`Hello there, my name is ${BotData.GlobalData.Name}. Thanks for adding me to your server! To get started, say **${BotData.GlobalData.DefaultPrefix}info**.`);
+		channel.send(`Hello there, my name is ${BotData.GlobalData.Name}. Thanks for adding me to your server! To get started, say **${GetServerSetting(guild, "prefix")}info**.`);
 	} catch (e) {
 		Log(e);
 	}
