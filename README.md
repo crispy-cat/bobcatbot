@@ -8,14 +8,14 @@
 - Host yourself or [invite to your server](https://discordapp.com/api/oauth2/authorize?client_id=654067311430336521&permissions=8&scope=bot)
 
 ### Support
-- [Support server](https://discord.gg/33XaQHx)
-- JohnSteeds#4687
+- [Support server](https://discord.gg/a66StMe)
+- SovereignBeak#9147
 
 ### Getting started
 1. [Download and install Node.js](https://nodejs.org/)
 2. Create a folder on your desktop, on a USB drive, wherever you want
 3. Download [app.js](app.js) and put it in the previously created folder
-4. Review the settings within [app.js](app.js) (lines 30-108)
+4. Review the settings within [app.js](app.js) (lines 30-153)
 5. [Create an application and bot](https://discordapp.com/developers)
 6. Create a file in your folder called `.env` with the following text:
 	```
