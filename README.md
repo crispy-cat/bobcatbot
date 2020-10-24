@@ -1,3 +1,5 @@
+### -= ALPHA 0.12 COMING SOON! JOIN https://discord.gg/qNcfdSS FOR MORE INFO =-
+
 # BobcatBot
 ## An extendable Discord bot for Node.js.
 
