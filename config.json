@@ -1,0 +1,80 @@
+{
+	"BotName":      "Bobcat Bot",
+	"ShortBotName": "Bobcat",
+	"IconUrl":      "https://i.ibb.co/z4QNfDg/icon.png",
+
+	"Token":      null,
+	"Token_Note": "You really should use .env instead!",
+	"GlobalAccessLevels": {
+		"681153017281904670": 5
+	},
+
+	"TimeFormat": "yyyy-mm-dd HH:MM:ss",
+	"DefaultStatus": {
+		"Status": "idle",
+		"Type":   "PLAYING",
+		"Text":   "https://crispy.cat/bobcat"
+	},
+
+	"LoadModules": [
+		"~bobcat/info.js",
+		"~bobcat/settings.js",
+		"~bobcat/data.js",
+		"~bobcat/super.js",
+		"~bobcat/debug.js",
+		"~bobcat/moderation.js",
+		"~bobcat/moderation.timing.js",
+		"~bobcat/fun.js",
+		"~bobcat/user.js",
+		"~bobcat/levels.js",
+		"~bobcat/misc.js",
+		"~bobcat/welcome.js",
+		"~bobcat/logging.js",
+		"~crispycat/example.js",
+		"~crispycat/penis.js"
+	],
+
+	"TickInterval":   0.125,
+	"SaveInterval":   60,
+	"BackupInterval": 600,
+
+	"ExpPerMessage": 2,
+	"LevelExp": [
+		0, 20, 45, 74, 107, 145, 187, 235, 290, 351, 422, 501, 591, 693, 809, 940, 1089, 1257, 1449, 1665, 1911,
+		2190, 2506, 2864, 3270, 3730, 4251, 4843, 5514, 6274, 7136, 8113, 9220, 10476, 11900, 13514, 15344,
+		17419, 19771, 22437, 25460, 28887, 32772, 37177, 42171, 47832, 54250, 61526, 69775, 79127, 89730, 101750,
+		115377, 130826, 148340, 168196, 190707, 216228, 245161, 277962, 315148, 357307, 405102, 459287, 520717
+	],
+
+	"Colors": {
+		"Primary":   15248684,
+		"Secondary": 11776947,
+		"Tertiary":  3376639,
+		"Success":   3394611,
+		"Warning":   16763904,
+		"Error":     13369344
+	},
+
+	"Emoji": {
+		"Check":       "\u2705",
+		"X":           "\u274c",
+		"Warning":     "\u26a0",
+		"Nerd":        "\ud83e\udd13",
+		"Boot":        "\ud83e\udd7e",
+		"Hammer":      "\ud83d\udd28",
+		"Money":       "\ud83d\udcb0",
+		"MoneyWings":  "\ud83d\udcb8",
+		"EightBall":   "\ud83c\udfb1",
+		"Confused":    "\ud83d\ude15",
+		"Overwhelmed": "\ud83d\ude30",
+		"RedFlag":     "\ud83d\udea9",
+		"Wave":        "\ud83e\udf44",
+		"Up":          "\ud83d\udd3a",
+		"Down":        "\ud83d\udd3b",
+		"PingPong":    "\ud83c\udfd3",
+		"OneHundred":  "\ud83d\udcaf",
+		"ZippedMouth": "\ud83e\udd10",
+		"Dad":         "\ud83d\udc68",
+		"Orange":      "\ud83c\udf4a"
+	}
+}

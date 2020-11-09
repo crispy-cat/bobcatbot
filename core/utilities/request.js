@@ -1,0 +1,1 @@
+module.exports = require("request").defaults({ headers: { "User-Agent": "Bobcat Discord Bot" } });
